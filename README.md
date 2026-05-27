@@ -22,7 +22,7 @@ Oppna den lokala adress som Vite skriver ut, vanligtvis `http://localhost:5173`.
 - Dragbar position for visualiseringar som har en fokuspunkt.
 - Valfri Ken Burns-liknande bildrorelse for bakgrunden, inklusive pan, zoom och organisk drift.
 - LRC-/texteditor for lattext med assisterad timing och fyra canvasritade textstilar.
-- Videonedladdning med MP4 nar webblasaren stoder det, samt WebM som alternativ.
+- Videonedladdning via WebCodecs utan realtidsinspelning, med MP4 nar webblasaren stoder det och WebM som alternativ.
 - Serialiserbar projektmodell for framtida sparning/export.
 
 ## Kontrollera bygget och tester
@@ -50,5 +50,5 @@ npm run build
 - Positionerade visualiseringar kan flyttas med dragpunkten i previewn.
 - Bakgrundsbilden kan ges valfri pan/zoom/organisk rorelse via `Image motion`.
 - Lattext kan redigeras som LRC eller vanlig text, tidsattas manuellt och ritas direkt i canvasen.
-- Videoexport sker lokalt i webblasaren och foljer valt videoformat.
+- Videoexport sker lokalt i webblasaren, foljer valt videoformat och startar inte ljuduppspelning.
 - Flera samtidiga visualiseringar och mer avancerad tidslinje/AI-hjalp byggs i senare steg.

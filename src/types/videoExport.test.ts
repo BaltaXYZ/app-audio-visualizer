@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultVideoExportFormatId,
-  getSupportedExportMimeType,
+  getSupportedVideoExportProfile,
   getVideoExportFormat,
   isVideoExportFormatSupported,
+  type VideoExportCodecSupport,
   videoExportFormats,
 } from "./videoExport";
 
@@ -16,18 +17,40 @@ describe("video export formats", () => {
     ]);
   });
 
-  it("selects the first supported mime type for a format", () => {
+  it("requires both video and audio codec support for a format", async () => {
     const support = {
-      isTypeSupported: (mimeType: string) => mimeType === "video/mp4",
-    };
+      canEncodeVideo: async (codec: string) => codec === "avc",
+      canEncodeAudio: async (codec: string) => codec === "aac",
+    } as VideoExportCodecSupport;
 
-    expect(getSupportedExportMimeType("mp4", support)).toBe("video/mp4");
-    expect(isVideoExportFormatSupported("mp4", support)).toBe(true);
-    expect(isVideoExportFormatSupported("webm", support)).toBe(false);
+    await expect(
+      getSupportedVideoExportProfile("mp4", {
+        width: 1280,
+        height: 720,
+        support,
+      }),
+    ).resolves.toMatchObject({ mimeType: "video/mp4" });
+    await expect(
+      isVideoExportFormatSupported("webm", {
+        width: 1280,
+        height: 720,
+        support,
+      }),
+    ).resolves.toBe(false);
   });
 
   it("stores file extensions with the export formats", () => {
     expect(getVideoExportFormat("mp4").extension).toBe("mp4");
     expect(getVideoExportFormat("webm").extension).toBe("webm");
+  });
+
+  it("returns no support when WebCodecs support is unavailable", async () => {
+    await expect(
+      getSupportedVideoExportProfile("mp4", {
+        width: 1280,
+        height: 720,
+        support: null,
+      }),
+    ).resolves.toBeNull();
   });
 });

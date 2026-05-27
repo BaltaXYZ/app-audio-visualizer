@@ -67,8 +67,9 @@ Anvand denna lista fore ett steg markeras som klart eller innan en storre UI-and
 - Kontrollera att `Download video` ar avstangd innan bild och ljud har valts.
 - Ladda bild och ljud, och kontrollera att exportknappen blir aktiv.
 - Kontrollera att `Download format` innehaller MP4 och WebM.
-- Valj MP4 om webblasaren stoder det och klicka `Download video` for att spela in en kort testvideo.
-- Kontrollera att `Save video` visas nar inspelningen ar klar.
+- Pausa ljudspelaren, valj MP4 om webblasaren stoder det och klicka `Download video`.
+- Kontrollera att statusen sager `Rendering video` och att ljudspelaren inte startar uppspelning.
+- Kontrollera att `Save video` visas nar renderingen ar klar.
 - Klicka `Save video` och kontrollera att filen laddas ned.
 - Kontrollera att filen sparas med `.mp4`, innehaller video och ljud och foljer valt videoformat.
 - Importera lattext och kontrollera att texten syns i exporterad video.

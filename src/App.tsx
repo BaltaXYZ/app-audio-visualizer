@@ -4,7 +4,6 @@ import { ExportPanel } from "./components/ExportPanel";
 import { LyricsPanel } from "./components/LyricsPanel";
 import { MotionPanel } from "./components/MotionPanel";
 import { PreviewStage } from "./components/PreviewStage";
-import type { PreviewStageHandle } from "./components/PreviewStage";
 import { UploadPanel } from "./components/UploadPanel";
 import { VisualizationPicker } from "./components/VisualizationPicker";
 import { WorkbenchTabs } from "./components/WorkbenchTabs";
@@ -30,16 +29,22 @@ const audioError =
   "The audio file could not be read. Choose a standard audio file such as MP3, WAV, M4A or OGG.";
 const audioKeptError =
   "That file is not a supported audio file. The current track was kept.";
+type StudioTabId = "preview" | "export";
+
+const studioTabs: Array<{ id: StudioTabId; label: string }> = [
+  { id: "preview", label: "Preview" },
+  { id: "export", label: "Export" },
+];
 
 function App() {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
     null,
   );
-  const [previewHandle, setPreviewHandle] =
-    useState<PreviewStageHandle | null>(null);
   const [activeWorkbenchTab, setActiveWorkbenchTab] =
     useState<WorkbenchTabId>("files");
+  const [activeStudioTab, setActiveStudioTab] =
+    useState<StudioTabId>("preview");
   const audioAnalyzer = useAudioAnalyzer(audioElement);
   const currentAudioTime = useAudioClock(audioElement);
   const selectedVisualization = getVisualizationById(
@@ -269,28 +274,80 @@ function App() {
         </WorkbenchTabs>
 
         <div className="studio-surface">
-          <PreviewStage
-            backgroundImage={state.backgroundImage}
-            status={state.backgroundStatus}
-            error={state.backgroundError}
-            visualization={selectedVisualization}
-            settings={selectedSettings}
-            position={selectedPosition}
-            videoFormatId={state.videoFormatId}
-            backgroundMotion={state.backgroundMotion}
-            lyricLines={state.lyricLines}
-            lyricsSettings={state.lyricsSettings}
-            audioTime={currentAudioTime}
-            onPositionChange={(position) =>
-              dispatch({
-                type: "setVisualizationPosition",
-                visualizationId: state.selectedVisualizationId,
-                position,
-              })
-            }
-            onPreviewReady={setPreviewHandle}
-            getAudioFrame={audioAnalyzer.getAudioFrame}
-          />
+          <div className="studio-tabs" role="tablist" aria-label="Studio tabs">
+            {studioTabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`studio-tab-${tab.id}`}
+                aria-selected={activeStudioTab === tab.id}
+                aria-controls={`studio-tab-panel-${tab.id}`}
+                className={activeStudioTab === tab.id ? "is-active" : undefined}
+                data-testid={`studio-tab-${tab.id}`}
+                onClick={() => setActiveStudioTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="studio-tab-content">
+            <div
+              id="studio-tab-panel-preview"
+              className={`studio-tab-panel ${
+                activeStudioTab === "preview" ? "is-active" : "is-inactive"
+              }`}
+              role="tabpanel"
+              aria-labelledby="studio-tab-preview"
+              aria-hidden={activeStudioTab !== "preview"}
+            >
+              <PreviewStage
+                backgroundImage={state.backgroundImage}
+                status={state.backgroundStatus}
+                error={state.backgroundError}
+                visualization={selectedVisualization}
+                settings={selectedSettings}
+                position={selectedPosition}
+                videoFormatId={state.videoFormatId}
+                backgroundMotion={state.backgroundMotion}
+                lyricLines={state.lyricLines}
+                lyricsSettings={state.lyricsSettings}
+                audioTime={currentAudioTime}
+                onPositionChange={(position) =>
+                  dispatch({
+                    type: "setVisualizationPosition",
+                    visualizationId: state.selectedVisualizationId,
+                    position,
+                  })
+                }
+                getAudioFrame={audioAnalyzer.getAudioFrame}
+              />
+            </div>
+
+            <div
+              id="studio-tab-panel-export"
+              className={`studio-tab-panel ${
+                activeStudioTab === "export" ? "is-active" : "is-inactive"
+              }`}
+              role="tabpanel"
+              aria-labelledby="studio-tab-export"
+              aria-hidden={activeStudioTab !== "export"}
+            >
+              <ExportPanel
+                audioElement={audioElement}
+                backgroundImage={state.backgroundImage}
+                audioTrack={state.audioTrack}
+                visualization={selectedVisualization}
+                settings={selectedSettings}
+                position={selectedPosition}
+                videoFormatId={state.videoFormatId}
+                backgroundMotion={state.backgroundMotion}
+                lyricLines={state.lyricLines}
+                lyricsSettings={state.lyricsSettings}
+              />
+            </div>
+          </div>
 
           <AudioPlayer
             audioTrack={state.audioTrack}
@@ -309,14 +366,6 @@ function App() {
                   "The audio file could not be played. Choose another audio file.",
               })
             }
-          />
-
-          <ExportPanel
-            previewHandle={previewHandle}
-            audioElement={audioElement}
-            audioTrack={state.audioTrack}
-            hasBackgroundImage={Boolean(state.backgroundImage)}
-            videoFormatId={state.videoFormatId}
           />
         </div>
       </section>

@@ -8,6 +8,7 @@ const spriteTypes = [
   "triangles",
   "crosses",
   "sparks",
+  "stone",
 ] as const;
 
 const spriteDirections = [
@@ -150,7 +151,10 @@ export const spriteField: VisualizationDefinition<SpriteFieldSettings> = {
       const depthPhase = wrap01(seedPhase + time * travelSpeed);
       const rotation =
         hash(index, 4) * Math.PI * 2 + time * (0.18 + response * 0.36);
-      const spriteScale = 0.76 + hash(index, 5) * 0.62;
+      const spriteScale =
+        settings.sprite === "stone"
+          ? 0.48 + hash(index, 5) * 1.08
+          : 0.76 + hash(index, 5) * 0.62;
       const point = spritePoint({
         direction: settings.direction,
         centerX,
@@ -173,7 +177,15 @@ export const spriteField: VisualizationDefinition<SpriteFieldSettings> = {
         1,
       );
 
-      drawSprite(ctx, settings.sprite, point.x, point.y, spriteSize, rotation);
+      drawSprite(
+        ctx,
+        settings.sprite,
+        point.x,
+        point.y,
+        spriteSize,
+        rotation,
+        index,
+      );
       ctx.globalAlpha = opacity;
       ctx.fillStyle = settings.color;
       ctx.strokeStyle = settings.color;
@@ -286,6 +298,7 @@ function drawSprite(
   y: number,
   size: number,
   rotation: number,
+  variant: number,
 ) {
   ctx.beginPath();
   ctx.save();
@@ -331,6 +344,36 @@ function drawSprite(
     ctx.lineTo(-size * 0.24, size * 0.2);
     ctx.lineTo(-size, 0);
     ctx.lineTo(-size * 0.24, -size * 0.2);
+    ctx.closePath();
+  } else if (sprite === "stone") {
+    const pointCount = 7 + Math.floor(hash(variant, 8) * 4);
+    const points = Array.from({ length: pointCount }, (_, point) => {
+      const angle = (point / pointCount) * Math.PI * 2;
+      const radius =
+        size *
+        (0.46 +
+          hash(variant, 20 + point) * 0.38 +
+          Math.sin(point * 1.7 + hash(variant, 9) * Math.PI) * 0.08);
+
+      return {
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius * (0.82 + hash(variant, 10) * 0.28),
+      };
+    });
+
+    const first = points[0];
+    const last = points[points.length - 1];
+
+    ctx.moveTo((last.x + first.x) / 2, (last.y + first.y) / 2);
+
+    for (let point = 0; point < points.length; point += 1) {
+      const current = points[point];
+      const next = points[(point + 1) % points.length];
+      const midX = (current.x + next.x) / 2;
+      const midY = (current.y + next.y) / 2;
+
+      ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+    }
     ctx.closePath();
   } else {
     ctx.arc(0, 0, size * 0.72, 0, Math.PI * 2);

@@ -165,7 +165,17 @@ type VisualizationInstance = {
 
 STEG 5 introducerar en serialiserbar `ProjectSnapshot` i `src/types/project.ts` och skapande funktion i `src/state/projectSnapshot.ts`. Den markerar vilken del av state som kan sparas senare utan att blanda in lokala `File`-objekt eller kortlivade `objectUrl`-varden.
 
-STEG 7 lagger till lokal videoexport via `src/components/ExportPanel.tsx` och `src/utils/videoExport.ts`. Exporten spelar in den valda preview-stage-ytan fran canvasen tillsammans med ljudspelarens ljudstream och skriver en nedladdningsbar fil med browserns `MediaRecorder`. MP4 erbjuds nar aktuell webblasare stoder relevant MP4/H.264/AAC-inspelning; WebM finns som alternativ. Ingen fil skickas till server.
+STEG 11 ersatter realtidsinspelning med lokal frame-for-frame-export via WebCodecs och `mediabunny`. `PreviewStage` och exporten delar samma renderfunktion i `src/canvas/renderPreviewFrame.ts`, sa exporten kan rita en exakt tidskod utan att starta ljudspelaren eller anvanda `canvas.captureStream()`.
+
+Exportflodet i `src/utils/videoExport.ts`:
+
+1. Laddar bakgrundsbilden lokalt fran befintlig objekt-URL.
+2. Dekodar ljudfilens `File` lokalt till ett `AudioBuffer`.
+3. Bygger en offline audio-timeline vid 30 fps med waveform, frekvensdata, energiband och beat-/transientvarden.
+4. Renderar varje videoframe direkt till exportcanvasen med valt videoformat.
+5. Skickar canvasframes och ljudbuffer till `mediabunny`, som kodar via WebCodecs och muxar till MP4 eller WebM.
+
+MP4 ar forstahandsval nar browsern kan koda H.264/AVC och AAC med WebCodecs. WebM anvands som alternativ nar VP9 och Opus stods. Ingen fil skickas till server.
 
 Snapshoten innehaller:
 
@@ -182,7 +192,7 @@ Snapshoten forbereder for:
 
 - Projektsparning och projektimport.
 - Flera samtidiga visualiseringsinstanser.
-- Mer avancerade exportfloden dar renderaren kan lasa en stabil projektmodell.
+- Offline-export dar renderaren kan lasa en stabil projektmodell.
 
 Snapshoten ska inte tolkas som ett permanent filformat an. Om projektsparning eller mer avancerad export byggs senare ska formatet versionshanteras och migreringar laggas till.
 

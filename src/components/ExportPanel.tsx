@@ -1,50 +1,75 @@
 import { useEffect, useRef, useState } from "react";
-import type { PreviewStageHandle } from "./PreviewStage";
-import type { AudioTrackAsset } from "../types/assets";
+import type { AudioTrackAsset, BackgroundImageAsset } from "../types/assets";
+import type { BackgroundMotionSettings } from "../types/backgroundMotion";
+import type { LyricLine, LyricsSettings } from "../types/lyrics";
+import type {
+  AnyVisualizationDefinition,
+  NormalizedPoint,
+  VisualizationSettings,
+} from "../types/visualization";
 import {
   defaultVideoExportFormatId,
-  getSupportedExportMimeType,
+  getSupportedVideoExportProfile,
   getVideoExportFormat,
   type VideoExportFormatId,
+  type VideoExportProfile,
   videoExportFormats,
 } from "../types/videoExport";
 import { getVideoFormat, type VideoFormatId } from "../types/videoFormat";
 import { formatBytes, formatDuration } from "../utils/formatters";
 import {
   createVideoFileName,
-  recordPreviewVideo,
+  renderProjectVideo,
   type VideoExportProgress,
 } from "../utils/videoExport";
 
 type ExportPanelProps = {
-  previewHandle: PreviewStageHandle | null;
   audioElement: HTMLAudioElement | null;
+  backgroundImage: BackgroundImageAsset | null;
   audioTrack: AudioTrackAsset | null;
-  hasBackgroundImage: boolean;
+  visualization: AnyVisualizationDefinition;
+  settings: VisualizationSettings;
+  position: NormalizedPoint;
   videoFormatId: VideoFormatId;
+  backgroundMotion: BackgroundMotionSettings;
+  lyricLines: LyricLine[];
+  lyricsSettings: LyricsSettings;
 };
 
-type ExportStatus = "idle" | "recording" | "complete" | "error";
+type ExportStatus = "idle" | "rendering" | "complete" | "error";
 
 type PreparedExport = {
   objectUrl: string;
   fileName: string;
 };
 
+type FormatSupport = Record<VideoExportFormatId, VideoExportProfile | null>;
+
+const emptyFormatSupport = createEmptyFormatSupport();
+
 export function ExportPanel({
-  previewHandle,
   audioElement,
+  backgroundImage,
   audioTrack,
-  hasBackgroundImage,
+  visualization,
+  settings,
+  position,
   videoFormatId,
+  backgroundMotion,
+  lyricLines,
+  lyricsSettings,
 }: ExportPanelProps) {
   const [selectedFormatId, setSelectedFormatId] =
     useState<VideoExportFormatId>(defaultVideoExportFormatId);
-  const [formatSupport, setFormatSupport] = useState(readFormatSupport);
+  const [formatSupport, setFormatSupport] =
+    useState<FormatSupport>(emptyFormatSupport);
+  const [isCheckingSupport, setIsCheckingSupport] = useState(true);
   const [status, setStatus] = useState<ExportStatus>("idle");
   const [progress, setProgress] = useState<VideoExportProgress>({
+    framesRendered: 0,
+    totalFrames: 0,
     elapsedSeconds: 0,
-    durationSeconds: null,
+    durationSeconds: audioTrack?.duration ?? 0,
   });
   const [message, setMessage] = useState<string | null>(null);
   const [preparedExport, setPreparedExport] = useState<PreparedExport | null>(
@@ -54,38 +79,68 @@ export function ExportPanel({
   const exportInputKeyRef = useRef("");
   const selectedExportFormat = getVideoExportFormat(selectedFormatId);
   const selectedVideoFormat = getVideoFormat(videoFormatId);
-  const selectedMimeType = formatSupport[selectedFormatId];
-  const isRecording = status === "recording";
+  const selectedProfile = formatSupport[selectedFormatId];
+  const isRendering = status === "rendering";
+  const allFormatsUnsupported =
+    !isCheckingSupport &&
+    videoExportFormats.every((format) => !formatSupport[format.id]);
+  const mp4Unsupported = !isCheckingSupport && !formatSupport.mp4;
   const exportInputKey = [
     selectedFormatId,
     videoFormatId,
+    backgroundImage?.objectUrl ?? "",
     audioTrack?.objectUrl ?? "",
-    hasBackgroundImage ? "image" : "no-image",
+    visualization.id,
+    JSON.stringify(settings),
+    JSON.stringify(position),
+    JSON.stringify(backgroundMotion),
+    JSON.stringify(lyricLines),
+    JSON.stringify(lyricsSettings),
   ].join("|");
   const missingReason = getMissingReason({
-    hasBackgroundImage,
+    backgroundImage,
     audioTrack,
-    audioElement,
-    previewHandle,
-    selectedMimeType,
+    selectedProfile,
     selectedFormatLabel: selectedExportFormat.label,
+    isCheckingSupport,
+    allFormatsUnsupported,
   });
-  const mp4Unsupported = !formatSupport.mp4;
 
   useEffect(() => {
-    const nextSupport = readFormatSupport();
-    setFormatSupport(nextSupport);
+    let active = true;
+    setIsCheckingSupport(true);
+    setFormatSupport(emptyFormatSupport);
 
-    if (!nextSupport[selectedFormatId]) {
-      const firstSupported = videoExportFormats.find(
-        (format) => nextSupport[format.id],
-      );
-
-      if (firstSupported) {
-        setSelectedFormatId(firstSupported.id);
+    readFormatSupport(
+      selectedVideoFormat.exportWidth,
+      selectedVideoFormat.exportHeight,
+    ).then((nextSupport) => {
+      if (!active) {
+        return;
       }
-    }
-  }, [selectedFormatId]);
+
+      setFormatSupport(nextSupport);
+      setIsCheckingSupport(false);
+
+      if (!nextSupport[selectedFormatId]) {
+        const firstSupported = videoExportFormats.find(
+          (format) => nextSupport[format.id],
+        );
+
+        if (firstSupported) {
+          setSelectedFormatId(firstSupported.id);
+        }
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    selectedFormatId,
+    selectedVideoFormat.exportHeight,
+    selectedVideoFormat.exportWidth,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -114,34 +169,37 @@ export function ExportPanel({
   }, [exportInputKey]);
 
   const startExport = async () => {
-    if (
-      !previewHandle ||
-      !audioElement ||
-      !audioTrack ||
-      !hasBackgroundImage ||
-      !selectedMimeType
-    ) {
+    if (!backgroundImage || !audioTrack || !selectedProfile) {
       return;
     }
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+    audioElement?.pause();
     setPreparedExport(null);
-    setStatus("recording");
+    setStatus("rendering");
     setMessage(null);
     setProgress({
+      framesRendered: 0,
+      totalFrames: 0,
       elapsedSeconds: 0,
-      durationSeconds: audioTrack.duration ?? null,
+      durationSeconds: audioTrack.duration ?? 0,
     });
 
     try {
-      const blob = await recordPreviewVideo({
-        previewCanvas: previewHandle.canvas,
-        getStage: previewHandle.getStage,
-        audioElement,
+      const blob = await renderProjectVideo({
+        backgroundImage,
+        audioTrack,
+        visualization,
+        settings,
+        position,
+        videoFormatId,
+        backgroundMotion,
+        lyricLines,
+        lyricsSettings,
         outputWidth: selectedVideoFormat.exportWidth,
         outputHeight: selectedVideoFormat.exportHeight,
-        mimeType: selectedMimeType,
+        profile: selectedProfile,
         signal: abortController.signal,
         onProgress: setProgress,
       });
@@ -166,6 +224,12 @@ export function ExportPanel({
         )}). Use Save video to download it.`,
       );
     } catch (error) {
+      if (abortController.signal.aborted) {
+        setStatus("idle");
+        setMessage("Export cancelled.");
+        return;
+      }
+
       setStatus("error");
       setMessage(
         error instanceof Error
@@ -192,7 +256,7 @@ export function ExportPanel({
         <span className="control-label">Download format</span>
         <select
           value={selectedFormatId}
-          disabled={isRecording}
+          disabled={isRendering || isCheckingSupport}
           data-testid="export-format-select"
           onChange={(event) =>
             setSelectedFormatId(event.currentTarget.value as VideoExportFormatId)
@@ -213,11 +277,11 @@ export function ExportPanel({
 
       <p className="export-meta">
         {selectedVideoFormat.label} · {selectedVideoFormat.exportWidth} x{" "}
-        {selectedVideoFormat.exportHeight}
+        {selectedVideoFormat.exportHeight} · 30 fps
       </p>
 
       <div className="export-actions">
-        {preparedExport && !isRecording ? (
+        {preparedExport && !isRendering ? (
           <a
             className="primary-button"
             href={preparedExport.objectUrl}
@@ -230,14 +294,14 @@ export function ExportPanel({
           <button
             type="button"
             className="primary-button"
-            disabled={Boolean(missingReason) || isRecording}
+            disabled={Boolean(missingReason) || isRendering}
             data-testid="export-video-button"
             onClick={startExport}
           >
-            {isRecording ? "Recording..." : "Download video"}
+            {isRendering ? "Rendering..." : "Download video"}
           </button>
         )}
-        {isRecording ? (
+        {isRendering ? (
           <button
             type="button"
             className="secondary-button"
@@ -247,25 +311,25 @@ export function ExportPanel({
             Cancel
           </button>
         ) : null}
-        {preparedExport && !isRecording ? (
+        {preparedExport && !isRendering ? (
           <button
             type="button"
             className="secondary-button"
-            data-testid="record-again"
+            data-testid="render-again"
             onClick={startExport}
           >
-            Record again
+            Render again
           </button>
         ) : null}
       </div>
 
-      {isRecording ? (
+      {isRendering ? (
         <p className="export-meta" data-testid="export-progress">
-          Recording in real time · {formatProgress(progress)}
+          Rendering video · {formatProgress(progress)}
         </p>
       ) : null}
 
-      {missingReason && !isRecording ? (
+      {missingReason && !isRendering ? (
         <p className="export-meta">{missingReason}</p>
       ) : null}
 
@@ -288,31 +352,42 @@ export function ExportPanel({
   );
 }
 
-function readFormatSupport(): Record<VideoExportFormatId, string | null> {
+function createEmptyFormatSupport(): FormatSupport {
   return Object.fromEntries(
-    videoExportFormats.map((format) => [
+    videoExportFormats.map((format) => [format.id, null]),
+  ) as FormatSupport;
+}
+
+async function readFormatSupport(width: number, height: number) {
+  const entries = await Promise.all(
+    videoExportFormats.map(async (format) => [
       format.id,
-      getSupportedExportMimeType(format.id),
+      await getSupportedVideoExportProfile(format.id, {
+        width,
+        height,
+      }),
     ]),
-  ) as Record<VideoExportFormatId, string | null>;
+  );
+
+  return Object.fromEntries(entries) as FormatSupport;
 }
 
 function getMissingReason({
-  hasBackgroundImage,
+  backgroundImage,
   audioTrack,
-  audioElement,
-  previewHandle,
-  selectedMimeType,
+  selectedProfile,
   selectedFormatLabel,
+  isCheckingSupport,
+  allFormatsUnsupported,
 }: {
-  hasBackgroundImage: boolean;
+  backgroundImage: BackgroundImageAsset | null;
   audioTrack: AudioTrackAsset | null;
-  audioElement: HTMLAudioElement | null;
-  previewHandle: PreviewStageHandle | null;
-  selectedMimeType: string | null;
+  selectedProfile: VideoExportProfile | null;
   selectedFormatLabel: string;
+  isCheckingSupport: boolean;
+  allFormatsUnsupported: boolean;
 }) {
-  if (!hasBackgroundImage) {
+  if (!backgroundImage) {
     return "Add a background image before exporting.";
   }
 
@@ -320,15 +395,15 @@ function getMissingReason({
     return "Add an audio track before exporting.";
   }
 
-  if (!previewHandle) {
-    return "Preview is not ready yet.";
+  if (isCheckingSupport) {
+    return "Checking browser export support.";
   }
 
-  if (!audioElement) {
-    return "Audio player is not ready yet.";
+  if (allFormatsUnsupported) {
+    return "This browser cannot render MP4 or WebM with WebCodecs.";
   }
 
-  if (!selectedMimeType) {
+  if (!selectedProfile) {
     return `${selectedFormatLabel} export is not supported in this browser.`;
   }
 
@@ -336,11 +411,13 @@ function getMissingReason({
 }
 
 function formatProgress(progress: VideoExportProgress) {
-  if (!progress.durationSeconds) {
-    return formatDuration(progress.elapsedSeconds);
+  if (!progress.totalFrames) {
+    return "Preparing frames";
   }
 
-  return `${formatDuration(progress.elapsedSeconds)} / ${formatDuration(
+  return `${progress.framesRendered} / ${
+    progress.totalFrames
+  } frames · ${formatDuration(progress.elapsedSeconds)} / ${formatDuration(
     progress.durationSeconds,
   )}`;
 }

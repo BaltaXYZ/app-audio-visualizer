@@ -95,7 +95,9 @@ button {
   overflow: hidden;
 }
 
-.workbench-tabs {
+.workbench-tabs,
+.studio-tabs,
+.lyrics-subtabs {
   display: flex;
   gap: 4px;
   padding: 12px 12px 0;
@@ -103,7 +105,9 @@ button {
   background: rgba(255, 253, 250, 0.9);
 }
 
-.workbench-tabs button {
+.workbench-tabs button,
+.studio-tabs button,
+.lyrics-subtabs button {
   flex: 1 1 0;
   min-width: 0;
   min-height: 42px;
@@ -117,12 +121,18 @@ button {
 }
 
 .workbench-tabs button:hover,
-.workbench-tabs button:focus-visible {
+.workbench-tabs button:focus-visible,
+.studio-tabs button:hover,
+.studio-tabs button:focus-visible,
+.lyrics-subtabs button:hover,
+.lyrics-subtabs button:focus-visible {
   color: var(--accent-strong);
   background: #f2fbf7;
 }
 
-.workbench-tabs button.is-active {
+.workbench-tabs button.is-active,
+.studio-tabs button.is-active,
+.lyrics-subtabs button.is-active {
   border-bottom-color: var(--accent);
   color: #17201f;
   background: #ffffff;
@@ -151,6 +161,7 @@ button {
 
 .workbench-panel .lyrics-card {
   min-height: 100%;
+  height: 100%;
 }
 
 .lyrics-card {
@@ -348,10 +359,53 @@ h2 {
 .studio-surface {
   grid-area: studio;
   display: grid;
-  grid-template-rows: minmax(360px, 1fr) auto;
-  gap: 20px;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  gap: 0;
   min-width: 0;
   min-height: calc(100vh - 48px);
+}
+
+.studio-tabs {
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: var(--shadow);
+}
+
+.studio-tab-content {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.studio-tab-panel {
+  min-width: 0;
+  min-height: 100%;
+}
+
+.studio-tab-panel.is-active {
+  position: relative;
+  z-index: 1;
+  display: grid;
+}
+
+.studio-tab-panel.is-inactive {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.studio-tab-panel > .preview-card,
+.studio-tab-panel > .export-card {
+  border-radius: 0 0 8px 8px;
+  min-height: 100%;
+}
+
+.studio-tab-panel > .export-card {
+  align-content: start;
+  overflow: auto;
 }
 
 .preview-card {
@@ -434,6 +488,10 @@ h2 {
   width: 100%;
 }
 
+.studio-surface > .audio-card {
+  margin-top: 20px;
+}
+
 .export-actions {
   display: flex;
   flex-wrap: wrap;
@@ -507,13 +565,14 @@ h2 {
 }
 
 .lyrics-editor-field {
-  flex: 1 1 auto;
-  min-height: 420px;
+  flex: 1 1 160px;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
 }
 
 .lyrics-editor-field textarea {
   height: 100%;
-  min-height: 420px;
+  min-height: 0;
   overflow: auto;
   font-family:
     "SFMono-Regular", Consolas, "Liberation Mono", ui-monospace, monospace;
@@ -521,6 +580,26 @@ h2 {
   line-height: 1.45;
   resize: none;
   white-space: pre;
+}
+
+.lyrics-subtabs {
+  padding-inline: 0;
+  background: transparent;
+}
+
+.lyrics-subtab-panel {
+  min-height: 0;
+}
+
+.lyrics-subtab-panel.is-timing {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.lyrics-subtab-panel.is-visual {
+  overflow: auto;
 }
 
 .control-field input[type="range"] {
@@ -628,6 +707,14 @@ h2 {
   grid-column: 1 / -1;
 }
 
+.lyrics-settings-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 @media (max-width: 1180px) {
   .app-shell {
     padding: 14px;
@@ -652,7 +739,7 @@ h2 {
   }
 
   .studio-surface {
-    grid-template-rows: minmax(320px, 58vh) auto;
+    grid-template-rows: auto minmax(320px, 58vh) auto;
     min-height: auto;
   }
 
@@ -662,9 +749,13 @@ h2 {
     max-height: none;
   }
 
-  .lyrics-editor-field,
+  .workbench-panel .lyrics-card {
+    height: auto;
+  }
+
   .lyrics-editor-field textarea {
-    min-height: 380px;
+    height: 220px;
+    min-height: 220px;
   }
 
   .lyrics-card .settings-panel {
@@ -692,7 +783,7 @@ h2 {
   }
 
   .studio-surface {
-    grid-template-rows: minmax(280px, 50vh) auto;
+    grid-template-rows: auto minmax(280px, 50vh) auto;
   }
 
   h1 {

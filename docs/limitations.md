@@ -3,9 +3,9 @@
 ## Nuvarande version
 
 - Appen sparar inte projekt till disk och laddar inte om tidigare projekt.
-- Videoexport kor i realtid i webblasaren. En fyra minuter lang lat tar alltsa ungefar fyra minuter att spela in.
-- MP4-export beror pa webblasarens `MediaRecorder`- och codec-stod. WebM finns som alternativ nar MP4 inte stods.
-- Det finns ingen separat server- eller WASM-transkodning till MP4.
+- Videoexport renderas lokalt frame-for-frame i webblasaren med WebCodecs och `mediabunny`. Exporthastigheten beror pa dator, browser, codec och videolangd.
+- MP4-export beror pa browserns WebCodecs-stod for H.264/AVC och AAC. WebM finns som alternativ nar VP9 och Opus stods.
+- Det finns ingen separat server-, native- eller WASM-transkodning till MP4.
 - Endast en aktiv visualisering renderas at gangen.
 - Varje visualisering har en sparad position, men det finns annu inte flera instanser av samma visualisering.
 - Dragbar position anvander en gemensam fokuspunkt. Flera kontrollpunkter per visualisering finns inte.
