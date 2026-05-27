@@ -6,6 +6,10 @@ import {
   defaultPosition,
   initialAppState,
 } from "./appReducer";
+import {
+  defaultImageEffectSettings,
+  imageEffectPresets,
+} from "../types/imageEffects";
 
 function createAsset(name: string, type: string): LocalAsset {
   return {
@@ -91,6 +95,30 @@ describe("appReducer", () => {
     expect(directed.backgroundMotion.enabled).toBe(true);
     expect(directed.backgroundMotion.direction).toBe("organic-drift");
     expect(reset.backgroundMotion).toEqual(defaultBackgroundMotion);
+  });
+
+  it("updates, applies presets and resets image filters independently", () => {
+    const enabled = appReducer(initialAppState, {
+      type: "updateImageEffects",
+      settingId: "enabled",
+      value: true,
+    });
+    const changed = appReducer(enabled, {
+      type: "updateImageEffects",
+      settingId: "amount",
+      value: 82,
+    });
+    const preset = appReducer(changed, {
+      type: "applyImageEffectPreset",
+      presetId: "warm-glow",
+    });
+    const reset = appReducer(preset, { type: "resetImageEffects" });
+
+    expect(changed.imageEffects.enabled).toBe(true);
+    expect(changed.imageEffects.amount).toBe(82);
+    expect(changed.backgroundMotion).toEqual(initialAppState.backgroundMotion);
+    expect(preset.imageEffects).toEqual(imageEffectPresets["warm-glow"]);
+    expect(reset.imageEffects).toEqual(defaultImageEffectSettings);
   });
 
   it("stores the selected video format", () => {

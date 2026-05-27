@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ExportPanel } from "./components/ExportPanel";
+import { ImageFiltersPanel } from "./components/ImageFiltersPanel";
 import { LyricsPanel } from "./components/LyricsPanel";
 import { MotionPanel } from "./components/MotionPanel";
 import { PreviewStage } from "./components/PreviewStage";
@@ -252,6 +253,24 @@ function App() {
             />
           ) : null}
 
+          {activeWorkbenchTab === "filters" ? (
+            <ImageFiltersPanel
+              hasBackgroundImage={Boolean(state.backgroundImage)}
+              imageEffects={state.imageEffects}
+              onPresetSelect={(presetId) =>
+                dispatch({ type: "applyImageEffectPreset", presetId })
+              }
+              onSettingChange={(settingId, value) =>
+                dispatch({
+                  type: "updateImageEffects",
+                  settingId,
+                  value,
+                })
+              }
+              onResetFilters={() => dispatch({ type: "resetImageEffects" })}
+            />
+          ) : null}
+
           {activeWorkbenchTab === "motion" ? (
             <MotionPanel
               videoFormatId={state.videoFormatId}
@@ -311,6 +330,7 @@ function App() {
                 position={selectedPosition}
                 videoFormatId={state.videoFormatId}
                 backgroundMotion={state.backgroundMotion}
+                imageEffects={state.imageEffects}
                 lyricLines={state.lyricLines}
                 lyricsSettings={state.lyricsSettings}
                 audioTime={currentAudioTime}
@@ -343,6 +363,7 @@ function App() {
                 position={selectedPosition}
                 videoFormatId={state.videoFormatId}
                 backgroundMotion={state.backgroundMotion}
+                imageEffects={state.imageEffects}
                 lyricLines={state.lyricLines}
                 lyricsSettings={state.lyricsSettings}
               />

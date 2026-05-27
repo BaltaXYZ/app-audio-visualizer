@@ -40,6 +40,7 @@ export function createProjectSnapshot(
       audioTrack: state.audioTrack ? toAudioReference(state.audioTrack) : null,
     },
     backgroundMotion: { ...state.backgroundMotion },
+    imageEffects: { ...state.imageEffects },
     lyrics: {
       lines: state.lyricLines.map((line) => ({ ...line })),
       settings: { ...state.lyricsSettings },

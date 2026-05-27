@@ -3,6 +3,8 @@ import type {
   BackgroundMotionDirection,
   BackgroundMotionSettings,
 } from "../types/backgroundMotion";
+import { drawImageEffects } from "./imageEffects";
+import type { ImageEffectSettings } from "../types/imageEffects";
 import type { LyricLine, LyricsSettings } from "../types/lyrics";
 import type {
   AnyVisualizationDefinition,
@@ -31,6 +33,7 @@ export type RenderPreviewFrameOptions = {
   position: NormalizedPoint;
   videoFormatId: VideoFormatId;
   backgroundMotion: BackgroundMotionSettings;
+  imageEffects: ImageEffectSettings;
   lyricLines: LyricLine[];
   lyricsSettings: LyricsSettings;
   lyricTimeSeconds: number;
@@ -50,6 +53,7 @@ export function renderPreviewFrame({
   position,
   videoFormatId,
   backgroundMotion,
+  imageEffects,
   lyricLines,
   lyricsSettings,
   lyricTimeSeconds,
@@ -69,6 +73,7 @@ export function renderPreviewFrame({
     stage = backgroundMotion.enabled
       ? drawMotionImage(ctx, backgroundImage, stage, elapsedMs, backgroundMotion)
       : drawContainedImage(ctx, backgroundImage, stage);
+    drawImageEffects(ctx, stage, imageEffects, audioFrame, elapsedMs);
   }
 
   ctx.save();

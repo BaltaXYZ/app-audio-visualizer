@@ -32,6 +32,16 @@ describe("createProjectSnapshot", () => {
         speed: 0.8,
         zoom: 16,
       },
+      imageEffects: {
+        enabled: true,
+        presetId: "neon-shift",
+        amount: 74,
+        bassPunch: 42,
+        colorMovement: 80,
+        glow: 34,
+        vignette: 12,
+        grain: 18,
+      },
       lyricLines: [
         { id: "lyric-1", startTime: 1.2, endTime: 3.4, text: "Hello" },
       ],
@@ -57,6 +67,16 @@ describe("createProjectSnapshot", () => {
       direction: "up-right",
       speed: 0.8,
       zoom: 16,
+    });
+    expect(snapshot.imageEffects).toEqual({
+      enabled: true,
+      presetId: "neon-shift",
+      amount: 74,
+      bassPunch: 42,
+      colorMovement: 80,
+      glow: 34,
+      vignette: 12,
+      grain: 18,
     });
     expect(snapshot.lyrics.lines).toEqual([
       { id: "lyric-1", startTime: 1.2, endTime: 3.4, text: "Hello" },

@@ -21,6 +21,7 @@ Oppna den lokala adress som Vite skriver ut, vanligtvis `http://localhost:5173`.
 - Reset av effektinställningar och centrering av positionerade effekter.
 - Dragbar position for visualiseringar som har en fokuspunkt.
 - Valfri Ken Burns-liknande bildrorelse for bakgrunden, inklusive pan, zoom och organisk drift.
+- Separat `Filters`-tabb med audio-reactive bildfilter for bakgrundsbilden.
 - LRC-/texteditor for lattext med assisterad timing och fyra canvasritade textstilar.
 - Videonedladdning via WebCodecs utan realtidsinspelning, med MP4 nar webblasaren stoder det och WebM som alternativ.
 - Serialiserbar projektmodell for framtida sparning/export.
@@ -49,6 +50,7 @@ npm run build
 - Samtliga visualiseringar har ett `Audio response`-reglage.
 - Positionerade visualiseringar kan flyttas med dragpunkten i previewn.
 - Bakgrundsbilden kan ges valfri pan/zoom/organisk rorelse via `Image motion`.
+- Bakgrundsbilden kan ges lokala audio-reactive filter som reagerar pa bas, diskant och energi.
 - Lattext kan redigeras som LRC eller vanlig text, tidsattas manuellt och ritas direkt i canvasen.
 - Videoexport sker lokalt i webblasaren, foljer valt videoformat och startar inte ljuduppspelning.
 - Flera samtidiga visualiseringar och mer avancerad tidslinje/AI-hjalp byggs i senare steg.

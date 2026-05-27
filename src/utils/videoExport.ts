@@ -13,6 +13,7 @@ import {
 import { renderPreviewFrame } from "../canvas/renderPreviewFrame";
 import type { AudioTrackAsset, BackgroundImageAsset } from "../types/assets";
 import type { BackgroundMotionSettings } from "../types/backgroundMotion";
+import type { ImageEffectSettings } from "../types/imageEffects";
 import type { LyricLine, LyricsSettings } from "../types/lyrics";
 import type {
   AnyVisualizationDefinition,
@@ -47,6 +48,7 @@ export type RenderProjectVideoOptions = {
   position: NormalizedPoint;
   videoFormatId: VideoFormatId;
   backgroundMotion: BackgroundMotionSettings;
+  imageEffects: ImageEffectSettings;
   lyricLines: LyricLine[];
   lyricsSettings: LyricsSettings;
   outputWidth: number;
@@ -67,6 +69,7 @@ export async function renderProjectVideo({
   position,
   videoFormatId,
   backgroundMotion,
+  imageEffects,
   lyricLines,
   lyricsSettings,
   outputWidth,
@@ -153,6 +156,7 @@ export async function renderProjectVideo({
         position,
         videoFormatId,
         backgroundMotion,
+        imageEffects,
         lyricLines,
         lyricsSettings,
         lyricTimeSeconds: frame.timestampSeconds,

@@ -143,6 +143,7 @@ Projektets state ska minst innehalla:
 - Installningar per visualisering: sparade med visualiseringens `id`.
 - Positioner: koordinater i normaliserad preview-yta, exempelvis `x: 0.5`, `y: 0.5`.
 - Bakgrundsrorelse: av/pa, riktning, hastighet och extra zoomutrymme for Ken Burns-liknande pan/zoom.
+- Bildfilter: av/pa, preset och reglage for lokal audio-reactive bildbehandling.
 - Lattext: applicerade rader, redigerbar drafttext, dirty-status, aktiv timingrad och textstil.
 - Preview: scenstorlek, skala, aktiv dragning och renderstatus.
 - Visualiseringsinstanser: `instanceId`, `visualizationId`, `settings`, `position`, `zIndex` och eventuell `label`.
@@ -184,6 +185,7 @@ Snapshoten innehaller:
 - Vald visualisering.
 - Filreferenser for bild och ljud med namn, typ, storlek och relevant metadata.
 - Bakgrundsrorelse for Ken Burns-liknande preview.
+- Bildfilterinstallningar for audio-reactive bakgrundsbehandling.
 - Lattextrader och textinstallningar.
 - En aktiv visualiseringsinstans med `instanceId`, `visualizationId`, `settings`, `position` och `zIndex`.
 - Sparade settings och positioner per visualisering.

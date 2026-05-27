@@ -6,7 +6,7 @@ Anvand denna lista fore ett steg markeras som klart eller innan en storre UI-and
 
 - Kor `npm install` om beroenden saknas.
 - Kor `npm run dev` och oppna Vite-adressen i en desktop- eller laptopwebblasare.
-- Kontrollera att vansterdelen visar tabbarna `Files`, `Lyrics` och `Visual`.
+- Kontrollera att vansterdelen visar tabbarna `Files`, `Lyrics`, `Visual`, `Filters` och `Ken Burns`.
 - Kontrollera att hogerdelen hela tiden visar live-preview, ljudspelare och export.
 - Byt mellan tabbarna och kontrollera att bara vald tabs innehall visas i vansterdelen.
 - Minska webblasarfönstret och kontrollera att tabbad arbetsyta hamnar fore preview/spelare/export.
@@ -35,7 +35,7 @@ Anvand denna lista fore ett steg markeras som klart eller innan en storre UI-and
 
 ## Bildrorelse
 
-- Oppna tabben `Visual`.
+- Oppna tabben `Ken Burns`.
 - Kontrollera att `Image motion` ar avstangt som standard.
 - Aktivera `Motion enabled`.
 - Valj en riktning, till exempel `Right` eller `Up Right`.
@@ -43,6 +43,19 @@ Anvand denna lista fore ett steg markeras som klart eller innan en storre UI-and
 - Valj `Organic Drift` och kontrollera att bilden ror sig langsamt med oregelbunden pan/zoom.
 - Andra `Speed` och `Zoom room` och kontrollera att bakgrundsbilden panorerar/zoomar mjukt.
 - Anvand `Reset motion` och kontrollera att rorelsen stangs av och standardvarden aterstalls.
+
+## Bildfilter
+
+- Oppna tabben `Filters`.
+- Kontrollera att `Filters enabled` ar avstangt som standard.
+- Kontrollera att kontrollerna visas aven utan bakgrundsbild och att statusraden ber anvandaren valja bild.
+- Ladda en bakgrundsbild och en ljudfil.
+- Aktivera `Filters enabled` och kontrollera att previewn uppdateras.
+- Byt mellan `Clean pulse`, `Warm glow`, `Neon shift`, `Dark impact` och `Glitch flash`.
+- Spela ljud och kontrollera att minst ett filter reagerar tydligt pa bas eller diskant.
+- Andra `Amount`, `Bass punch`, `Color movement`, `Glow`, `Vignette` och `Grain` och kontrollera att previewn uppdateras direkt.
+- Anvand `Reset filters` och kontrollera att filtren stangs av och standardvarden aterstalls.
+- Kontrollera att visualiseringar och lattext fortfarande ritas ovanpa bildfiltret.
 
 ## Lattext
 

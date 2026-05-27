@@ -1,11 +1,17 @@
 import type { ReactNode } from "react";
 
-export type WorkbenchTabId = "files" | "lyrics" | "visual" | "motion";
+export type WorkbenchTabId =
+  | "files"
+  | "lyrics"
+  | "visual"
+  | "filters"
+  | "motion";
 
 const workbenchTabs: Array<{ id: WorkbenchTabId; label: string }> = [
   { id: "files", label: "Files" },
   { id: "lyrics", label: "Lyrics" },
   { id: "visual", label: "Visual" },
+  { id: "filters", label: "Filters" },
   { id: "motion", label: "Ken Burns" },
 ];
 

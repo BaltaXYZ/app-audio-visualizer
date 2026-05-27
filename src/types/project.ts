@@ -1,4 +1,5 @@
 import type { BackgroundMotionSettings } from "./backgroundMotion";
+import type { ImageEffectSettings } from "./imageEffects";
 import type { LyricLine, LyricsSettings } from "./lyrics";
 import type { VideoFormatId } from "./videoFormat";
 import type { NormalizedPoint, VisualizationSettings } from "./visualization";
@@ -31,6 +32,7 @@ export type ProjectSnapshot = {
     audioTrack: ProjectAssetReference | null;
   };
   backgroundMotion: BackgroundMotionSettings;
+  imageEffects: ImageEffectSettings;
   lyrics: {
     lines: LyricLine[];
     settings: LyricsSettings;

@@ -9,6 +9,15 @@ import type {
   BackgroundMotionValue,
 } from "../types/backgroundMotion";
 import type {
+  ImageEffectPresetId,
+  ImageEffectSettings,
+  ImageEffectSettingValue,
+} from "../types/imageEffects";
+import {
+  defaultImageEffectSettings,
+  getImageEffectPreset,
+} from "../types/imageEffects";
+import type {
   LyricLine,
   LyricsSettings,
   LyricsSettingValue,
@@ -38,6 +47,7 @@ export type AppState = {
   audioError: string | null;
   videoFormatId: VideoFormatId;
   backgroundMotion: BackgroundMotionSettings;
+  imageEffects: ImageEffectSettings;
   lyricLines: LyricLine[];
   lyricsDraftText: string;
   lyricsDraftDirty: boolean;
@@ -79,6 +89,13 @@ export type AppAction =
       value: BackgroundMotionValue;
     }
   | { type: "resetBackgroundMotion" }
+  | {
+      type: "updateImageEffects";
+      settingId: keyof ImageEffectSettings;
+      value: ImageEffectSettingValue;
+    }
+  | { type: "applyImageEffectPreset"; presetId: ImageEffectPresetId }
+  | { type: "resetImageEffects" }
   | { type: "setVideoFormat"; videoFormatId: VideoFormatId }
   | { type: "setLyricsDraftText"; text: string }
   | {
@@ -142,6 +159,7 @@ export const initialAppState: AppState = {
   audioError: null,
   videoFormatId: defaultVideoFormatId,
   backgroundMotion: { ...defaultBackgroundMotion },
+  imageEffects: { ...defaultImageEffectSettings },
   lyricLines: [],
   lyricsDraftText: "",
   lyricsDraftDirty: false,
@@ -289,6 +307,24 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         backgroundMotion: { ...defaultBackgroundMotion },
+      };
+    case "updateImageEffects":
+      return {
+        ...state,
+        imageEffects: {
+          ...state.imageEffects,
+          [action.settingId]: action.value,
+        },
+      };
+    case "applyImageEffectPreset":
+      return {
+        ...state,
+        imageEffects: getImageEffectPreset(action.presetId),
+      };
+    case "resetImageEffects":
+      return {
+        ...state,
+        imageEffects: { ...defaultImageEffectSettings },
       };
     case "setVideoFormat":
       return {

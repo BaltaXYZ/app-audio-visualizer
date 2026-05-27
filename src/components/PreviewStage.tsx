@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AudioFrame } from "../types/audio";
 import type { BackgroundImageAsset, LoadStatus } from "../types/assets";
 import type { BackgroundMotionSettings } from "../types/backgroundMotion";
+import type { ImageEffectSettings } from "../types/imageEffects";
 import {
   renderPreviewFrame,
   type StageRect,
@@ -25,6 +26,7 @@ type PreviewStageProps = {
   position: NormalizedPoint;
   videoFormatId: VideoFormatId;
   backgroundMotion: BackgroundMotionSettings;
+  imageEffects: ImageEffectSettings;
   lyricLines: LyricLine[];
   lyricsSettings: LyricsSettings;
   audioTime: number;
@@ -41,6 +43,7 @@ export function PreviewStage({
   position,
   videoFormatId,
   backgroundMotion,
+  imageEffects,
   lyricLines,
   lyricsSettings,
   audioTime,
@@ -55,6 +58,7 @@ export function PreviewStage({
   const positionRef = useRef(position);
   const videoFormatIdRef = useRef(videoFormatId);
   const backgroundMotionRef = useRef(backgroundMotion);
+  const imageEffectsRef = useRef(imageEffects);
   const lyricLinesRef = useRef(lyricLines);
   const lyricsSettingsRef = useRef(lyricsSettings);
   const audioTimeRef = useRef(audioTime);
@@ -81,6 +85,10 @@ export function PreviewStage({
   useEffect(() => {
     backgroundMotionRef.current = backgroundMotion;
   }, [backgroundMotion]);
+
+  useEffect(() => {
+    imageEffectsRef.current = imageEffects;
+  }, [imageEffects]);
 
   useEffect(() => {
     lyricLinesRef.current = lyricLines;
@@ -263,6 +271,7 @@ export function PreviewStage({
         position: positionRef.current,
         videoFormatId: videoFormatIdRef.current,
         backgroundMotion: backgroundMotionRef.current,
+        imageEffects: imageEffectsRef.current,
         lyricLines: lyricLinesRef.current,
         lyricsSettings: lyricsSettingsRef.current,
         lyricTimeSeconds: audioTimeRef.current,

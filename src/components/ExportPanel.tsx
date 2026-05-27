@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AudioTrackAsset, BackgroundImageAsset } from "../types/assets";
 import type { BackgroundMotionSettings } from "../types/backgroundMotion";
+import type { ImageEffectSettings } from "../types/imageEffects";
 import type { LyricLine, LyricsSettings } from "../types/lyrics";
 import type {
   AnyVisualizationDefinition,
@@ -32,6 +33,7 @@ type ExportPanelProps = {
   position: NormalizedPoint;
   videoFormatId: VideoFormatId;
   backgroundMotion: BackgroundMotionSettings;
+  imageEffects: ImageEffectSettings;
   lyricLines: LyricLine[];
   lyricsSettings: LyricsSettings;
 };
@@ -56,6 +58,7 @@ export function ExportPanel({
   position,
   videoFormatId,
   backgroundMotion,
+  imageEffects,
   lyricLines,
   lyricsSettings,
 }: ExportPanelProps) {
@@ -94,6 +97,7 @@ export function ExportPanel({
     JSON.stringify(settings),
     JSON.stringify(position),
     JSON.stringify(backgroundMotion),
+    JSON.stringify(imageEffects),
     JSON.stringify(lyricLines),
     JSON.stringify(lyricsSettings),
   ].join("|");
@@ -195,6 +199,7 @@ export function ExportPanel({
         position,
         videoFormatId,
         backgroundMotion,
+        imageEffects,
         lyricLines,
         lyricsSettings,
         outputWidth: selectedVideoFormat.exportWidth,
