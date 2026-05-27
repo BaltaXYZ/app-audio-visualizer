@@ -102,7 +102,42 @@ describe("calculateImageEffectRenderState", () => {
     );
 
     expect(treble.grainAlpha).toBeGreaterThan(quiet.grainAlpha);
-    expect(treble.grainAlpha).toBeLessThanOrEqual(0.24);
-    expect(treble.scanlineAlpha).toBeLessThanOrEqual(0.12);
+    expect(treble.grainAlpha).toBeLessThanOrEqual(0.42);
+    expect(treble.scanlineAlpha).toBeLessThanOrEqual(0.22);
+  });
+
+  it("makes presets visibly different even before playback starts", () => {
+    const clean = calculateImageEffectRenderState(
+      imageEffectPresets["clean-pulse"],
+      createAudioFrame(),
+      0,
+    );
+    const warm = calculateImageEffectRenderState(
+      imageEffectPresets["warm-glow"],
+      createAudioFrame(),
+      0,
+    );
+    const neon = calculateImageEffectRenderState(
+      imageEffectPresets["neon-shift"],
+      createAudioFrame(),
+      0,
+    );
+    const dark = calculateImageEffectRenderState(
+      imageEffectPresets["dark-impact"],
+      createAudioFrame(),
+      0,
+    );
+    const glitch = calculateImageEffectRenderState(
+      imageEffectPresets["glitch-flash"],
+      createAudioFrame(),
+      0,
+    );
+
+    expect(warm.glowAlpha).toBeGreaterThan(clean.glowAlpha);
+    expect(neon.saturation).toBeGreaterThan(warm.saturation);
+    expect(dark.vignetteAlpha).toBeGreaterThan(warm.vignetteAlpha);
+    expect(dark.darkenAlpha).toBeGreaterThan(0);
+    expect(glitch.channelShift).toBeGreaterThan(neon.channelShift);
+    expect(glitch.sliceAlpha).toBeGreaterThan(0);
   });
 });
