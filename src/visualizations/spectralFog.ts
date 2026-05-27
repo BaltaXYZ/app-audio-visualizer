@@ -1,5 +1,5 @@
 import type { VisualizationDefinition } from "../types/visualization";
-import { alphaColor } from "./helpers";
+import { alphaColor, audioResponse } from "./helpers";
 
 type SpectralFogSettings = {
   lowColor: string;
@@ -7,6 +7,7 @@ type SpectralFogSettings = {
   density: number;
   opacity: number;
   flow: number;
+  audioResponse: number;
 };
 
 export const spectralFog: VisualizationDefinition<SpectralFogSettings> = {
@@ -20,6 +21,7 @@ export const spectralFog: VisualizationDefinition<SpectralFogSettings> = {
     density: 6,
     opacity: 0.34,
     flow: 0.55,
+    audioResponse: 1.55,
   },
   controls: [
     { id: "lowColor", label: "Low color", type: "color" },
@@ -41,6 +43,14 @@ export const spectralFog: VisualizationDefinition<SpectralFogSettings> = {
       max: 1.5,
       step: 0.05,
     },
+    {
+      id: "audioResponse",
+      label: "Audio response",
+      type: "range",
+      min: 0.5,
+      max: 3,
+      step: 0.05,
+    },
   ],
   supportsDrag: false,
   supportsPositioning: false,
@@ -56,17 +66,29 @@ export const spectralFog: VisualizationDefinition<SpectralFogSettings> = {
     for (let index = 0; index < layers; index += 1) {
       const phase = index / layers;
       const color = index % 2 === 0 ? settings.lowColor : settings.highColor;
-      const energy = index % 2 === 0 ? audio.bass : audio.treble;
+      const rawEnergy = index % 2 === 0 ? audio.bass : audio.treble;
+      const energy = audioResponse(
+        rawEnergy * 0.78 + audio.volume * 0.22 + audio.energyDelta * 0.24,
+        settings.audioResponse,
+      );
       const x =
         width *
-        (0.18 + phase * 0.72 + Math.sin(time * settings.flow + index) * 0.08);
+        (0.18 +
+          phase * 0.72 +
+          Math.sin(time * settings.flow + index) * (0.06 + energy * 0.06));
       const y =
         height *
-        (0.22 + ((index * 0.37) % 0.62) + Math.cos(time * settings.flow * 0.7 + index) * 0.06);
-      const radiusX = width * (0.18 + audio.slowEnergy * 0.08 + phase * 0.03);
-      const radiusY = height * (0.16 + audio.mids * 0.08 + (1 - phase) * 0.04);
+        (0.22 +
+          ((index * 0.37) % 0.62) +
+          Math.cos(time * settings.flow * 0.7 + index) * (0.045 + energy * 0.05));
+      const radiusX = width * (0.16 + energy * 0.11 + phase * 0.04);
+      const radiusY =
+        height *
+        (0.14 +
+          audioResponse(audio.mids, settings.audioResponse) * 0.11 +
+          (1 - phase) * 0.04);
 
-      ctx.globalAlpha = settings.opacity * (0.28 + energy * 0.9);
+      ctx.globalAlpha = settings.opacity * (0.22 + energy * 1.08);
       ctx.fillStyle = alphaColor(color, 0.8);
       ctx.beginPath();
       ctx.ellipse(x, y, radiusX, radiusY, phase * Math.PI, 0, Math.PI * 2);

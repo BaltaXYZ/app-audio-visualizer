@@ -17,9 +17,12 @@ Oppna den lokala adress som Vite skriver ut, vanligtvis `http://localhost:5173`.
 - Native ljudspelare med metadata och Web Audio-baserad ljudanalys.
 - Dropdown med elva visualiseringar.
 - Automatiska effektreglage for vald visualisering.
+- `Audio response`-reglage for att gora visualiseringarnas musikreaktion tydligare eller mer subtil.
 - Reset av effektinställningar och centrering av positionerade effekter.
 - Dragbar position for visualiseringar som har en fokuspunkt.
-- Valfri Ken Burns-liknande bildrorelse for bakgrunden.
+- Valfri Ken Burns-liknande bildrorelse for bakgrunden, inklusive pan, zoom och organisk drift.
+- LRC-/texteditor for lattext med assisterad timing och fyra canvasritade textstilar.
+- Videonedladdning med MP4 nar webblasaren stoder det, samt WebM som alternativ.
 - Serialiserbar projektmodell for framtida sparning/export.
 
 ## Kontrollera bygget och tester
@@ -43,6 +46,9 @@ npm run build
 - Web Audio-analys driver visualiseringarna.
 - Dropdown-listan innehaller elva visualiseringar.
 - Reglage visas automatiskt utifran vald visualisering.
+- Samtliga visualiseringar har ett `Audio response`-reglage.
 - Positionerade visualiseringar kan flyttas med dragpunkten i previewn.
-- Bakgrundsbilden kan ges valfri pan/zoom-rorelse via `Image motion`.
-- Flera samtidiga visualiseringar, export och mer avancerad tidslinje/AI-hjalp byggs i senare steg.
+- Bakgrundsbilden kan ges valfri pan/zoom/organisk rorelse via `Image motion`.
+- Lattext kan redigeras som LRC eller vanlig text, tidsattas manuellt och ritas direkt i canvasen.
+- Videoexport sker lokalt i webblasaren och foljer valt videoformat.
+- Flera samtidiga visualiseringar och mer avancerad tidslinje/AI-hjalp byggs i senare steg.

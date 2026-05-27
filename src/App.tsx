@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { AudioPlayer } from "./components/AudioPlayer";
+import { ExportPanel } from "./components/ExportPanel";
+import { LyricsPanel } from "./components/LyricsPanel";
+import { MotionPanel } from "./components/MotionPanel";
 import { PreviewStage } from "./components/PreviewStage";
+import type { PreviewStageHandle } from "./components/PreviewStage";
 import { UploadPanel } from "./components/UploadPanel";
 import { VisualizationPicker } from "./components/VisualizationPicker";
+import { WorkbenchTabs } from "./components/WorkbenchTabs";
+import type { WorkbenchTabId } from "./components/WorkbenchTabs";
 import { useAudioAnalyzer } from "./hooks/useAudioAnalyzer";
+import { useAudioClock } from "./hooks/useAudioClock";
 import { appReducer, initialAppState } from "./state/appReducer";
 import type { LocalAsset } from "./types/assets";
+import type { LyricsSettings } from "./types/lyrics";
 import { createLocalAsset } from "./utils/fileUrls";
 import { isAcceptedAudioFile, isAcceptedImageFile } from "./utils/fileValidation";
+import { parseLyricsInput } from "./utils/lyrics";
 import {
   getVisualizationById,
   visualizationRegistry,
@@ -27,7 +36,12 @@ function App() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
     null,
   );
+  const [previewHandle, setPreviewHandle] =
+    useState<PreviewStageHandle | null>(null);
+  const [activeWorkbenchTab, setActiveWorkbenchTab] =
+    useState<WorkbenchTabId>("files");
   const audioAnalyzer = useAudioAnalyzer(audioElement);
+  const currentAudioTime = useAudioClock(audioElement);
   const selectedVisualization = getVisualizationById(
     state.selectedVisualizationId,
   );
@@ -112,65 +126,147 @@ function App() {
     [state.audioTrack],
   );
 
+  const applyLyricsText = useCallback((text: string, draftText?: string) => {
+    const result = parseLyricsInput(text);
+
+    if (result.error) {
+      dispatch({ type: "setLyricsError", message: result.error });
+      return;
+    }
+
+    dispatch({
+      type: "applyLyricsDraftResult",
+      lines: result.lines,
+      warning: result.warning,
+      draftText,
+    });
+  }, []);
+
+  const applyLyricsDraft = useCallback(() => {
+    applyLyricsText(state.lyricsDraftText);
+  }, [applyLyricsText, state.lyricsDraftText]);
+
+  const loadLyricsText = useCallback(
+    (text: string) => {
+      dispatch({ type: "setLyricsDraftText", text });
+      applyLyricsText(text, text);
+    },
+    [applyLyricsText],
+  );
+
   return (
     <main className="app-shell">
       <section className="workspace" aria-label="Audio Visualizer Studio">
-        <UploadPanel
-          backgroundImage={state.backgroundImage}
-          audioTrack={state.audioTrack}
-          backgroundStatus={state.backgroundStatus}
-          audioStatus={state.audioStatus}
-          backgroundError={state.backgroundError}
-          audioError={state.audioError}
-          onBackgroundSelected={loadBackgroundImage}
-          onAudioSelected={loadAudioTrack}
-          onClearBackground={() => dispatch({ type: "clearBackgroundImage" })}
-          onClearAudio={() => dispatch({ type: "clearAudioTrack" })}
-        />
+        <WorkbenchTabs
+          activeTab={activeWorkbenchTab}
+          onTabChange={setActiveWorkbenchTab}
+        >
+          {activeWorkbenchTab === "files" ? (
+            <UploadPanel
+              backgroundImage={state.backgroundImage}
+              audioTrack={state.audioTrack}
+              backgroundStatus={state.backgroundStatus}
+              audioStatus={state.audioStatus}
+              backgroundError={state.backgroundError}
+              audioError={state.audioError}
+              onBackgroundSelected={loadBackgroundImage}
+              onAudioSelected={loadAudioTrack}
+              onClearBackground={() =>
+                dispatch({ type: "clearBackgroundImage" })
+              }
+              onClearAudio={() => dispatch({ type: "clearAudioTrack" })}
+            />
+          ) : null}
 
-        <VisualizationPicker
-          visualizations={visualizationRegistry}
-          selectedId={state.selectedVisualizationId}
-          settings={selectedSettings}
-          videoFormatId={state.videoFormatId}
-          backgroundMotion={state.backgroundMotion}
-          onSelect={(visualizationId) =>
-            dispatch({ type: "setSelectedVisualization", visualizationId })
-          }
-          onVideoFormatChange={(videoFormatId) =>
-            dispatch({ type: "setVideoFormat", videoFormatId })
-          }
-          onSettingChange={(settingId, value) =>
-            dispatch({
-              type: "updateVisualizationSetting",
-              visualizationId: state.selectedVisualizationId,
-              settingId,
-              value,
-            })
-          }
-          onResetSettings={() =>
-            dispatch({
-              type: "resetVisualizationSettings",
-              visualizationId: state.selectedVisualizationId,
-            })
-          }
-          onResetPosition={() =>
-            dispatch({
-              type: "resetVisualizationPosition",
-              visualizationId: state.selectedVisualizationId,
-            })
-          }
-          onBackgroundMotionChange={(settingId, value) =>
-            dispatch({
-              type: "updateBackgroundMotion",
-              settingId,
-              value,
-            })
-          }
-          onResetBackgroundMotion={() =>
-            dispatch({ type: "resetBackgroundMotion" })
-          }
-        />
+          {activeWorkbenchTab === "lyrics" ? (
+            <LyricsPanel
+              lines={state.lyricLines}
+              draftText={state.lyricsDraftText}
+              draftDirty={state.lyricsDraftDirty}
+              settings={state.lyricsSettings}
+              activeLineId={state.activeLyricLineId}
+              currentTime={currentAudioTime}
+              error={state.lyricsError}
+              warning={state.lyricsWarning}
+              onDraftChange={(text) =>
+                dispatch({ type: "setLyricsDraftText", text })
+              }
+              onApplyDraft={applyLyricsDraft}
+              onLoadText={loadLyricsText}
+              onClear={() => dispatch({ type: "clearLyrics" })}
+              onSetLineTime={(lineId, startTime) =>
+                dispatch({ type: "setLyricLineTime", lineId, startTime })
+              }
+              onSetLineTimeAndNext={(lineId, startTime) =>
+                dispatch({
+                  type: "setLyricLineTimeAndSelectNext",
+                  lineId,
+                  startTime,
+                })
+              }
+              onClearTiming={() => dispatch({ type: "clearLyricTiming" })}
+              onSettingChange={(settingId, value) =>
+                dispatch({
+                  type: "updateLyricsSetting",
+                  settingId: settingId as keyof LyricsSettings,
+                  value,
+                })
+              }
+              onResetSettings={() => dispatch({ type: "resetLyricsSettings" })}
+            />
+          ) : null}
+
+          {activeWorkbenchTab === "visual" ? (
+            <VisualizationPicker
+              visualizations={visualizationRegistry}
+              selectedId={state.selectedVisualizationId}
+              settings={selectedSettings}
+              onSelect={(visualizationId) =>
+                dispatch({ type: "setSelectedVisualization", visualizationId })
+              }
+              onSettingChange={(settingId, value) =>
+                dispatch({
+                  type: "updateVisualizationSetting",
+                  visualizationId: state.selectedVisualizationId,
+                  settingId,
+                  value,
+                })
+              }
+              onResetSettings={() =>
+                dispatch({
+                  type: "resetVisualizationSettings",
+                  visualizationId: state.selectedVisualizationId,
+                })
+              }
+              onResetPosition={() =>
+                dispatch({
+                  type: "resetVisualizationPosition",
+                  visualizationId: state.selectedVisualizationId,
+                })
+              }
+            />
+          ) : null}
+
+          {activeWorkbenchTab === "motion" ? (
+            <MotionPanel
+              videoFormatId={state.videoFormatId}
+              backgroundMotion={state.backgroundMotion}
+              onVideoFormatChange={(videoFormatId) =>
+                dispatch({ type: "setVideoFormat", videoFormatId })
+              }
+              onBackgroundMotionChange={(settingId, value) =>
+                dispatch({
+                  type: "updateBackgroundMotion",
+                  settingId,
+                  value,
+                })
+              }
+              onResetBackgroundMotion={() =>
+                dispatch({ type: "resetBackgroundMotion" })
+              }
+            />
+          ) : null}
+        </WorkbenchTabs>
 
         <div className="studio-surface">
           <PreviewStage
@@ -182,6 +278,9 @@ function App() {
             position={selectedPosition}
             videoFormatId={state.videoFormatId}
             backgroundMotion={state.backgroundMotion}
+            lyricLines={state.lyricLines}
+            lyricsSettings={state.lyricsSettings}
+            audioTime={currentAudioTime}
             onPositionChange={(position) =>
               dispatch({
                 type: "setVisualizationPosition",
@@ -189,6 +288,7 @@ function App() {
                 position,
               })
             }
+            onPreviewReady={setPreviewHandle}
             getAudioFrame={audioAnalyzer.getAudioFrame}
           />
 
@@ -209,6 +309,14 @@ function App() {
                   "The audio file could not be played. Choose another audio file.",
               })
             }
+          />
+
+          <ExportPanel
+            previewHandle={previewHandle}
+            audioElement={audioElement}
+            audioTrack={state.audioTrack}
+            hasBackgroundImage={Boolean(state.backgroundImage)}
+            videoFormatId={state.videoFormatId}
           />
         </div>
       </section>

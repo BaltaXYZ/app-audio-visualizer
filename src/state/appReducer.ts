@@ -9,12 +9,24 @@ import type {
   BackgroundMotionValue,
 } from "../types/backgroundMotion";
 import type {
+  LyricLine,
+  LyricsSettings,
+  LyricsSettingValue,
+} from "../types/lyrics";
+import { defaultLyricsSettings } from "../types/lyrics";
+import type {
   ControlValue,
   NormalizedPoint,
   VisualizationSettings,
 } from "../types/visualization";
 import type { VideoFormatId } from "../types/videoFormat";
 import { defaultVideoFormatId } from "../types/videoFormat";
+import {
+  formatLyricsAsLrc,
+  formatLyricsAsPlainText,
+  getNextLyricLineId,
+  setLyricLineStartTime,
+} from "../utils/lyrics";
 import { visualizationRegistry } from "../visualizations/registry";
 
 export type AppState = {
@@ -26,6 +38,13 @@ export type AppState = {
   audioError: string | null;
   videoFormatId: VideoFormatId;
   backgroundMotion: BackgroundMotionSettings;
+  lyricLines: LyricLine[];
+  lyricsDraftText: string;
+  lyricsDraftDirty: boolean;
+  lyricsSettings: LyricsSettings;
+  activeLyricLineId: string | null;
+  lyricsError: string | null;
+  lyricsWarning: string | null;
   selectedVisualizationId: string;
   visualizationSettings: Record<string, VisualizationSettings>;
   visualizationPositions: Record<string, NormalizedPoint>;
@@ -60,7 +79,25 @@ export type AppAction =
       value: BackgroundMotionValue;
     }
   | { type: "resetBackgroundMotion" }
-  | { type: "setVideoFormat"; videoFormatId: VideoFormatId };
+  | { type: "setVideoFormat"; videoFormatId: VideoFormatId }
+  | { type: "setLyricsDraftText"; text: string }
+  | {
+      type: "applyLyricsDraftResult";
+      lines: LyricLine[];
+      warning?: string | null;
+      draftText?: string;
+    }
+  | { type: "clearLyrics" }
+  | { type: "setLyricsError"; message: string }
+  | { type: "setLyricLineTime"; lineId: string; startTime: number }
+  | { type: "setLyricLineTimeAndSelectNext"; lineId: string; startTime: number }
+  | { type: "clearLyricTiming" }
+  | {
+      type: "updateLyricsSetting";
+      settingId: keyof LyricsSettings;
+      value: LyricsSettingValue;
+    }
+  | { type: "resetLyricsSettings" };
 
 export const defaultPosition: NormalizedPoint = { x: 0.5, y: 0.5 };
 export const defaultBackgroundMotion: BackgroundMotionSettings = {
@@ -105,6 +142,13 @@ export const initialAppState: AppState = {
   audioError: null,
   videoFormatId: defaultVideoFormatId,
   backgroundMotion: { ...defaultBackgroundMotion },
+  lyricLines: [],
+  lyricsDraftText: "",
+  lyricsDraftDirty: false,
+  lyricsSettings: { ...defaultLyricsSettings },
+  activeLyricLineId: null,
+  lyricsError: null,
+  lyricsWarning: null,
   selectedVisualizationId: visualizationRegistry[0].id,
   visualizationSettings: createInitialVisualizationSettings(),
   visualizationPositions: createInitialVisualizationPositions(),
@@ -250,6 +294,106 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         videoFormatId: action.videoFormatId,
+      };
+    case "setLyricsDraftText":
+      return {
+        ...state,
+        lyricsDraftText: action.text,
+        lyricsDraftDirty: true,
+        lyricsError: null,
+        lyricsWarning: null,
+      };
+    case "applyLyricsDraftResult":
+      return {
+        ...state,
+        lyricLines: action.lines,
+        lyricsDraftText: action.draftText ?? state.lyricsDraftText,
+        lyricsDraftDirty: false,
+        activeLyricLineId: action.lines[0]?.id ?? null,
+        lyricsError: null,
+        lyricsWarning: action.warning ?? null,
+      };
+    case "clearLyrics":
+      return {
+        ...state,
+        lyricLines: [],
+        lyricsDraftText: "",
+        lyricsDraftDirty: false,
+        activeLyricLineId: null,
+        lyricsError: null,
+        lyricsWarning: null,
+      };
+    case "setLyricsError":
+      return {
+        ...state,
+        lyricsError: action.message,
+        lyricsWarning: null,
+      };
+    case "setLyricLineTime": {
+      const lyricLines = setLyricLineStartTime(
+        state.lyricLines,
+        action.lineId,
+        action.startTime,
+      );
+
+      return {
+        ...state,
+        lyricLines,
+        lyricsDraftText: formatLyricsAsLrc(lyricLines),
+        lyricsDraftDirty: false,
+        lyricsError: null,
+        lyricsWarning: null,
+      };
+    }
+    case "setLyricLineTimeAndSelectNext": {
+      const lyricLines = setLyricLineStartTime(
+        state.lyricLines,
+        action.lineId,
+        action.startTime,
+      );
+
+      return {
+        ...state,
+        lyricLines,
+        lyricsDraftText: formatLyricsAsLrc(lyricLines),
+        lyricsDraftDirty: false,
+        lyricsError: null,
+        lyricsWarning: null,
+        activeLyricLineId:
+          getNextLyricLineId(state.lyricLines, action.lineId) ?? action.lineId,
+      };
+    }
+    case "clearLyricTiming": {
+      const lyricLines = state.lyricLines.map((line) => ({
+        ...line,
+        startTime: null,
+        endTime: null,
+      }));
+
+      return {
+        ...state,
+        lyricLines,
+        lyricsDraftText: formatLyricsAsPlainText(lyricLines),
+        lyricsDraftDirty: false,
+        activeLyricLineId: lyricLines[0]?.id ?? null,
+        lyricsError: null,
+        lyricsWarning: lyricLines.length
+          ? "Timing cleared. Lyrics are kept."
+          : null,
+      };
+    }
+    case "updateLyricsSetting":
+      return {
+        ...state,
+        lyricsSettings: {
+          ...state.lyricsSettings,
+          [action.settingId]: action.value,
+        },
+      };
+    case "resetLyricsSettings":
+      return {
+        ...state,
+        lyricsSettings: { ...defaultLyricsSettings },
       };
     default:
       return state;

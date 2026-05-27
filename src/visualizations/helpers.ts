@@ -21,6 +21,10 @@ export function stageScale(width: number, height: number) {
   return Math.min(width, height) / 720;
 }
 
+export function audioResponse(value: number, sensitivity: number) {
+  return clamp(value * sensitivity, 0, 1);
+}
+
 export function alphaColor(color: string, alpha: number) {
   const match = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
 

@@ -40,6 +40,10 @@ export function createProjectSnapshot(
       audioTrack: state.audioTrack ? toAudioReference(state.audioTrack) : null,
     },
     backgroundMotion: { ...state.backgroundMotion },
+    lyrics: {
+      lines: state.lyricLines.map((line) => ({ ...line })),
+      settings: { ...state.lyricsSettings },
+    },
     visualizationInstances: [activeInstance],
     visualizationSettings: cloneRecord(state.visualizationSettings),
     visualizationPositions: cloneRecord(state.visualizationPositions),

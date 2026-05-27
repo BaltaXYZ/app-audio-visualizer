@@ -8,6 +8,7 @@ import { lightRays } from "./lightRays";
 import { pulseCircle } from "./pulseCircle";
 import { radialEqualizer } from "./radialEqualizer";
 import { spectralFog } from "./spectralFog";
+import { spriteField } from "./spriteField";
 import { waveformRibbon } from "./waveformRibbon";
 
 export const visualizationRegistry = [
@@ -19,6 +20,7 @@ export const visualizationRegistry = [
   breathingGlow,
   floatingParticles,
   lightRays,
+  spriteField,
   spectralFog,
   impactFrame,
   bassHorizon,

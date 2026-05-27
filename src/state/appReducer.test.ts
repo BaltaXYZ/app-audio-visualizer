@@ -84,12 +84,12 @@ describe("appReducer", () => {
     const directed = appReducer(enabled, {
       type: "updateBackgroundMotion",
       settingId: "direction",
-      value: "down-right",
+      value: "organic-drift",
     });
     const reset = appReducer(directed, { type: "resetBackgroundMotion" });
 
     expect(directed.backgroundMotion.enabled).toBe(true);
-    expect(directed.backgroundMotion.direction).toBe("down-right");
+    expect(directed.backgroundMotion.direction).toBe("organic-drift");
     expect(reset.backgroundMotion).toEqual(defaultBackgroundMotion);
   });
 
@@ -101,5 +101,84 @@ describe("appReducer", () => {
 
     expect(changed.videoFormatId).toBe("9-16");
     expect(changed.backgroundMotion).toEqual(initialAppState.backgroundMotion);
+  });
+
+  it("imports, times and clears lyrics", () => {
+    const dirtyDraft = appReducer(initialAppState, {
+      type: "setLyricsDraftText",
+      text: "First\nSecond",
+    });
+    const withLyrics = appReducer(dirtyDraft, {
+      type: "applyLyricsDraftResult",
+      lines: [
+        { id: "lyric-1", startTime: null, endTime: null, text: "First" },
+        { id: "lyric-2", startTime: null, endTime: null, text: "Second" },
+      ],
+      warning: "Imported plain lyrics.",
+    });
+    const timed = appReducer(withLyrics, {
+      type: "setLyricLineTimeAndSelectNext",
+      lineId: "lyric-1",
+      startTime: 12.4,
+    });
+    const timingCleared = appReducer(timed, { type: "clearLyricTiming" });
+    const cleared = appReducer(timingCleared, { type: "clearLyrics" });
+
+    expect(dirtyDraft.lyricsDraftText).toBe("First\nSecond");
+    expect(dirtyDraft.lyricsDraftDirty).toBe(true);
+    expect(withLyrics.activeLyricLineId).toBe("lyric-1");
+    expect(withLyrics.lyricsDraftDirty).toBe(false);
+    expect(withLyrics.lyricsWarning).toBe("Imported plain lyrics.");
+    expect(timed.lyricLines[0].startTime).toBe(12.4);
+    expect(timed.lyricsDraftText).toBe("[00:12.40] First\nSecond");
+    expect(timed.lyricsDraftDirty).toBe(false);
+    expect(timed.activeLyricLineId).toBe("lyric-2");
+    expect(timingCleared.lyricLines).toEqual([
+      { id: "lyric-1", startTime: null, endTime: null, text: "First" },
+      { id: "lyric-2", startTime: null, endTime: null, text: "Second" },
+    ]);
+    expect(timingCleared.lyricsDraftText).toBe("First\nSecond");
+    expect(timingCleared.lyricsDraftDirty).toBe(false);
+    expect(timingCleared.activeLyricLineId).toBe("lyric-1");
+    expect(timingCleared.lyricsWarning).toBe("Timing cleared. Lyrics are kept.");
+    expect(cleared.lyricLines).toEqual([]);
+    expect(cleared.lyricsDraftText).toBe("");
+    expect(cleared.lyricsDraftDirty).toBe(false);
+    expect(cleared.activeLyricLineId).toBeNull();
+  });
+
+  it("keeps applied lyrics when a draft has parse errors", () => {
+    const withLyrics = appReducer(initialAppState, {
+      type: "applyLyricsDraftResult",
+      draftText: "[00:01.00] First",
+      lines: [
+        { id: "lyric-1", startTime: 1, endTime: null, text: "First" },
+      ],
+    });
+    const dirtyDraft = appReducer(withLyrics, {
+      type: "setLyricsDraftText",
+      text: "",
+    });
+    const failed = appReducer(dirtyDraft, {
+      type: "setLyricsError",
+      message: "Add lyrics before importing.",
+    });
+
+    expect(failed.lyricLines).toEqual(withLyrics.lyricLines);
+    expect(failed.lyricsDraftText).toBe("");
+    expect(failed.lyricsDraftDirty).toBe(true);
+    expect(failed.lyricsError).toBe("Add lyrics before importing.");
+  });
+
+  it("updates and resets lyric settings", () => {
+    const changed = appReducer(initialAppState, {
+      type: "updateLyricsSetting",
+      settingId: "style",
+      value: "poster",
+    });
+    const reset = appReducer(changed, { type: "resetLyricsSettings" });
+
+    expect(changed.lyricsSettings.style).toBe("poster");
+    expect(reset.lyricsSettings).toEqual(initialAppState.lyricsSettings);
   });
 });

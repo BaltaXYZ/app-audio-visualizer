@@ -1,47 +1,27 @@
 import type {
-  BackgroundMotionSettings,
-  BackgroundMotionValue,
-} from "../types/backgroundMotion";
-import { backgroundMotionDirections } from "../types/backgroundMotion";
-import type {
   AnyVisualizationDefinition,
   ControlValue,
   VisualizationSettings,
 } from "../types/visualization";
-import type { VideoFormatId } from "../types/videoFormat";
-import { videoFormats } from "../types/videoFormat";
 
 type VisualizationPickerProps = {
   visualizations: readonly AnyVisualizationDefinition[];
   selectedId: string;
   settings: VisualizationSettings;
-  videoFormatId: VideoFormatId;
-  backgroundMotion: BackgroundMotionSettings;
   onSelect: (id: string) => void;
-  onVideoFormatChange: (videoFormatId: VideoFormatId) => void;
   onSettingChange: (settingId: string, value: ControlValue) => void;
   onResetSettings: () => void;
   onResetPosition: () => void;
-  onBackgroundMotionChange: (
-    settingId: keyof BackgroundMotionSettings,
-    value: BackgroundMotionValue,
-  ) => void;
-  onResetBackgroundMotion: () => void;
 };
 
 export function VisualizationPicker({
   visualizations,
   selectedId,
   settings,
-  videoFormatId,
-  backgroundMotion,
   onSelect,
-  onVideoFormatChange,
   onSettingChange,
   onResetSettings,
   onResetPosition,
-  onBackgroundMotionChange,
-  onResetBackgroundMotion,
 }: VisualizationPickerProps) {
   const selectedVisualization =
     visualizations.find((visualization) => visualization.id === selectedId) ??
@@ -146,7 +126,7 @@ export function VisualizationPicker({
                 >
                   {control.options?.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {formatSelectOption(option)}
                     </option>
                   ))}
                 </select>
@@ -178,112 +158,6 @@ export function VisualizationPicker({
         })}
       </div>
 
-      <div className="settings-panel" aria-label="Image motion settings">
-        <div className="settings-header">
-          <p className="settings-title">Image motion</p>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={onResetBackgroundMotion}
-            data-testid="reset-background-motion"
-          >
-            Reset motion
-          </button>
-        </div>
-
-        <label className="control-field">
-          <span className="control-label">Video format</span>
-          <select
-            value={videoFormatId}
-            data-testid="video-format-select"
-            onChange={(event) =>
-              onVideoFormatChange(event.currentTarget.value as VideoFormatId)
-            }
-          >
-            {videoFormats.map((format) => (
-              <option key={format.id} value={format.id}>
-                {format.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="control-field checkbox">
-          <input
-            type="checkbox"
-            checked={backgroundMotion.enabled}
-            data-testid="background-motion-enabled"
-            onChange={(event) =>
-              onBackgroundMotionChange("enabled", event.currentTarget.checked)
-            }
-          />
-          <span className="control-label">Motion enabled</span>
-        </label>
-
-        <label className="control-field">
-          <span className="control-label">Direction</span>
-          <select
-            value={backgroundMotion.direction}
-            data-testid="background-motion-direction"
-            onChange={(event) =>
-              onBackgroundMotionChange(
-                "direction",
-                event.currentTarget.value as BackgroundMotionSettings["direction"],
-              )
-            }
-          >
-            {backgroundMotionDirections.map((direction) => (
-              <option key={direction} value={direction}>
-                {formatDirection(direction)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="control-field">
-          <span className="control-row">
-            <span className="control-label">Speed</span>
-            <span className="control-value">
-              {formatControlValue(backgroundMotion.speed)}
-            </span>
-          </span>
-          <input
-            type="range"
-            min={0.2}
-            max={1.6}
-            step={0.05}
-            value={backgroundMotion.speed}
-            data-testid="background-motion-speed"
-            onChange={(event) =>
-              onBackgroundMotionChange(
-                "speed",
-                Number(event.currentTarget.value),
-              )
-            }
-          />
-        </label>
-
-        <label className="control-field">
-          <span className="control-row">
-            <span className="control-label">Zoom room</span>
-            <span className="control-value">{backgroundMotion.zoom}%</span>
-          </span>
-          <input
-            type="range"
-            min={4}
-            max={28}
-            step={1}
-            value={backgroundMotion.zoom}
-            data-testid="background-motion-zoom"
-            onChange={(event) =>
-              onBackgroundMotionChange(
-                "zoom",
-                Number(event.currentTarget.value),
-              )
-            }
-          />
-        </label>
-      </div>
     </section>
   );
 }
@@ -296,8 +170,8 @@ function formatControlValue(value: ControlValue) {
   return String(value);
 }
 
-function formatDirection(direction: BackgroundMotionSettings["direction"]) {
-  return direction
+function formatSelectOption(option: string) {
+  return option
     .split("-")
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(" ");

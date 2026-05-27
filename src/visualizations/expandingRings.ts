@@ -1,5 +1,5 @@
 import type { VisualizationDefinition } from "../types/visualization";
-import { stageScale } from "./helpers";
+import { audioResponse, stageScale } from "./helpers";
 
 type ExpandingRingsSettings = {
   color: string;
@@ -7,6 +7,7 @@ type ExpandingRingsSettings = {
   maxRadius: number;
   lineWidth: number;
   speed: number;
+  audioResponse: number;
 };
 
 export const expandingRings: VisualizationDefinition<ExpandingRingsSettings> = {
@@ -20,6 +21,7 @@ export const expandingRings: VisualizationDefinition<ExpandingRingsSettings> = {
     maxRadius: 330,
     lineWidth: 4,
     speed: 0.85,
+    audioResponse: 1.45,
   },
   controls: [
     { id: "color", label: "Color", type: "color" },
@@ -34,6 +36,14 @@ export const expandingRings: VisualizationDefinition<ExpandingRingsSettings> = {
       max: 1.8,
       step: 0.05,
     },
+    {
+      id: "audioResponse",
+      label: "Audio response",
+      type: "range",
+      min: 0.5,
+      max: 3,
+      step: 0.05,
+    },
   ],
   supportsDrag: true,
   supportsPositioning: true,
@@ -41,12 +51,14 @@ export const expandingRings: VisualizationDefinition<ExpandingRingsSettings> = {
   render: ({ ctx, centerX, centerY, width, height, elapsedMs }, audio, settings) => {
     const scale = stageScale(width, height);
     const count = Math.max(2, Math.round(settings.ringCount));
-    const maxRadius = settings.maxRadius * scale * (0.86 + audio.bass * 0.18);
-    const accent = Math.min(
-      1,
+    const bassResponse = audioResponse(audio.bass, settings.audioResponse);
+    const maxRadius = settings.maxRadius * scale * (0.82 + bassResponse * 0.3);
+    const accent = audioResponse(
       audio.transientStrength * 0.8 +
         audio.energyDelta * 1.7 +
-        audio.beatConfidence * 0.45,
+        audio.beatConfidence * 0.45 +
+        audio.bass * 0.2,
+      settings.audioResponse,
     );
 
     ctx.save();
@@ -61,7 +73,7 @@ export const expandingRings: VisualizationDefinition<ExpandingRingsSettings> = {
       const phase =
         (elapsedMs / (1500 / settings.speed) +
           offset +
-          audio.beatConfidence * 0.1) %
+          audioResponse(audio.beatConfidence, settings.audioResponse) * 0.14) %
         1;
       const radius = Math.max(4, phase * maxRadius);
       const alpha = (1 - phase) * (0.2 + accent * 0.52);

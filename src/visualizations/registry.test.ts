@@ -42,4 +42,13 @@ describe("visualizationRegistry", () => {
       }
     }
   });
+
+  it("exposes an audio response control for every visualization", () => {
+    for (const visualization of visualizationRegistry) {
+      expect(
+        visualization.controls.some((control) => control.id === "audioResponse"),
+        visualization.id,
+      ).toBe(true);
+    }
+  });
 });

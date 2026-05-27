@@ -7,6 +7,10 @@ export const backgroundMotionDirections = [
   "up-left",
   "down-right",
   "down-left",
+  "zoom-in",
+  "zoom-out",
+  "zoom-in-out",
+  "organic-drift",
 ] as const;
 
 export type BackgroundMotionDirection =

@@ -1,11 +1,12 @@
 import type { VisualizationDefinition } from "../types/visualization";
-import { alphaColor, stageScale } from "./helpers";
+import { alphaColor, audioResponse, stageScale } from "./helpers";
 
 type ImpactFrameSettings = {
   color: string;
   intensity: number;
   thickness: number;
   vignette: boolean;
+  audioResponse: number;
 };
 
 export const impactFrame: VisualizationDefinition<ImpactFrameSettings> = {
@@ -18,6 +19,7 @@ export const impactFrame: VisualizationDefinition<ImpactFrameSettings> = {
     intensity: 0.75,
     thickness: 14,
     vignette: true,
+    audioResponse: 1.65,
   },
   controls: [
     { id: "color", label: "Color", type: "color" },
@@ -31,17 +33,26 @@ export const impactFrame: VisualizationDefinition<ImpactFrameSettings> = {
     },
     { id: "thickness", label: "Thickness", type: "range", min: 3, max: 42 },
     { id: "vignette", label: "Vignette", type: "toggle" },
+    {
+      id: "audioResponse",
+      label: "Audio response",
+      type: "range",
+      min: 0.5,
+      max: 3,
+      step: 0.05,
+    },
   ],
   supportsDrag: false,
   supportsPositioning: false,
   recommendedFor: "fast",
   render: ({ ctx, width, height }, audio, settings) => {
     const scale = stageScale(width, height);
-    const impact = Math.min(
-      1,
+    const impact = audioResponse(
       audio.beatConfidence * 0.75 +
         audio.transientStrength * 0.65 +
-        audio.bass * 0.25,
+        audio.bass * 0.28 +
+        audio.volume * 0.16,
+      settings.audioResponse,
     );
     const inset = settings.thickness * scale * (1 + impact * 1.4);
 
@@ -49,7 +60,7 @@ export const impactFrame: VisualizationDefinition<ImpactFrameSettings> = {
     ctx.globalCompositeOperation = "screen";
     ctx.strokeStyle = settings.color;
     ctx.lineWidth = Math.max(2, inset);
-    ctx.globalAlpha = settings.intensity * (0.14 + impact * 0.62 + audio.volume * 0.12);
+    ctx.globalAlpha = settings.intensity * (0.1 + impact * 0.78);
     ctx.shadowColor = settings.color;
     ctx.shadowBlur = 18 + impact * 34;
     ctx.strokeRect(inset / 2, inset / 2, width - inset, height - inset);

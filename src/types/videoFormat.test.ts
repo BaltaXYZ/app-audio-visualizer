@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { defaultVideoFormatId, getVideoFormatRatio, videoFormats } from "./videoFormat";
+import {
+  defaultVideoFormatId,
+  getVideoFormat,
+  getVideoFormatRatio,
+  videoFormats,
+} from "./videoFormat";
 
 describe("video formats", () => {
   it("defaults to landscape video", () => {
@@ -14,5 +19,16 @@ describe("video formats", () => {
       "1-1",
       "4-5",
     ]);
+  });
+
+  it("stores export dimensions for each format", () => {
+    expect(getVideoFormat("16-9")).toMatchObject({
+      exportWidth: 1280,
+      exportHeight: 720,
+    });
+    expect(getVideoFormat("9-16")).toMatchObject({
+      exportWidth: 720,
+      exportHeight: 1280,
+    });
   });
 });

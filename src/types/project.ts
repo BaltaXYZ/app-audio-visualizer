@@ -1,4 +1,5 @@
 import type { BackgroundMotionSettings } from "./backgroundMotion";
+import type { LyricLine, LyricsSettings } from "./lyrics";
 import type { VideoFormatId } from "./videoFormat";
 import type { NormalizedPoint, VisualizationSettings } from "./visualization";
 
@@ -30,6 +31,10 @@ export type ProjectSnapshot = {
     audioTrack: ProjectAssetReference | null;
   };
   backgroundMotion: BackgroundMotionSettings;
+  lyrics: {
+    lines: LyricLine[];
+    settings: LyricsSettings;
+  };
   visualizationInstances: VisualizationInstance[];
   visualizationSettings: Record<string, VisualizationSettings>;
   visualizationPositions: Record<string, NormalizedPoint>;

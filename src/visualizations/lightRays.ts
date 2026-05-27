@@ -1,5 +1,5 @@
 import type { VisualizationDefinition } from "../types/visualization";
-import { alphaColor, stageScale } from "./helpers";
+import { alphaColor, audioResponse, stageScale } from "./helpers";
 
 type LightRaysSettings = {
   color: string;
@@ -7,6 +7,7 @@ type LightRaysSettings = {
   length: number;
   intensity: number;
   sweep: number;
+  audioResponse: number;
 };
 
 export const lightRays: VisualizationDefinition<LightRaysSettings> = {
@@ -20,6 +21,7 @@ export const lightRays: VisualizationDefinition<LightRaysSettings> = {
     length: 460,
     intensity: 0.72,
     sweep: 0.35,
+    audioResponse: 1.5,
   },
   controls: [
     { id: "color", label: "Color", type: "color" },
@@ -41,6 +43,14 @@ export const lightRays: VisualizationDefinition<LightRaysSettings> = {
       max: 1.5,
       step: 0.05,
     },
+    {
+      id: "audioResponse",
+      label: "Audio response",
+      type: "range",
+      min: 0.5,
+      max: 3,
+      step: 0.05,
+    },
   ],
   supportsDrag: true,
   supportsPositioning: true,
@@ -48,10 +58,18 @@ export const lightRays: VisualizationDefinition<LightRaysSettings> = {
   render: ({ ctx, centerX, centerY, width, height, elapsedMs }, audio, settings) => {
     const scale = stageScale(width, height);
     const count = Math.max(4, Math.round(settings.rayCount));
-    const length = settings.length * scale * (0.88 + audio.bass * 0.22);
+    const bassResponse = audioResponse(audio.bass, settings.audioResponse);
+    const trebleResponse = audioResponse(
+      audio.treble * 0.75 + audio.energyDelta * 0.35,
+      settings.audioResponse,
+    );
+    const volumeResponse = audioResponse(audio.volume, settings.audioResponse);
+    const length = settings.length * scale * (0.82 + bassResponse * 0.38);
     const rotation =
-      (elapsedMs / 1300) * settings.sweep + audio.beatConfidence * 0.16;
-    const alpha = settings.intensity * (0.08 + audio.treble * 0.28 + audio.volume * 0.18);
+      (elapsedMs / 1300) * settings.sweep +
+      audioResponse(audio.beatConfidence, settings.audioResponse) * 0.22;
+    const alpha =
+      settings.intensity * (0.06 + trebleResponse * 0.36 + volumeResponse * 0.2);
 
     ctx.save();
     ctx.globalCompositeOperation = "screen";
@@ -71,7 +89,7 @@ export const lightRays: VisualizationDefinition<LightRaysSettings> = {
       gradient.addColorStop(1, alphaColor(settings.color, 0));
 
       ctx.strokeStyle = gradient;
-      ctx.lineWidth = Math.max(1, (1.5 + audio.treble * 4) * scale);
+      ctx.lineWidth = Math.max(1, (1.4 + trebleResponse * 5.2) * scale);
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
       ctx.lineTo(x2, y2);

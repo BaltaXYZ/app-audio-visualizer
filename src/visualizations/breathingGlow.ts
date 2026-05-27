@@ -1,11 +1,12 @@
 import type { VisualizationDefinition } from "../types/visualization";
-import { alphaColor, stageScale } from "./helpers";
+import { alphaColor, audioResponse, stageScale } from "./helpers";
 
 type BreathingGlowSettings = {
   color: string;
   size: number;
   intensity: number;
   softness: number;
+  audioResponse: number;
 };
 
 export const breathingGlow: VisualizationDefinition<BreathingGlowSettings> = {
@@ -18,6 +19,7 @@ export const breathingGlow: VisualizationDefinition<BreathingGlowSettings> = {
     size: 240,
     intensity: 0.68,
     softness: 0.72,
+    audioResponse: 1.55,
   },
   controls: [
     { id: "color", label: "Color", type: "color" },
@@ -38,14 +40,25 @@ export const breathingGlow: VisualizationDefinition<BreathingGlowSettings> = {
       max: 1,
       step: 0.05,
     },
+    {
+      id: "audioResponse",
+      label: "Audio response",
+      type: "range",
+      min: 0.5,
+      max: 3,
+      step: 0.05,
+    },
   ],
   supportsDrag: true,
   supportsPositioning: true,
   recommendedFor: "calm",
   render: ({ ctx, centerX, centerY, width, height }, audio, settings) => {
     const scale = stageScale(width, height);
-    const energy = audio.slowEnergy * 0.75 + audio.bass * 0.45 + audio.volume * 0.3;
-    const radius = settings.size * scale * (0.78 + energy * 0.45);
+    const energy = audioResponse(
+      audio.slowEnergy * 0.7 + audio.bass * 0.5 + audio.volume * 0.45,
+      settings.audioResponse,
+    );
+    const radius = settings.size * scale * (0.72 + energy * 0.68);
     const inner = Math.max(0.02, 0.08 + settings.softness * 0.18);
     const gradient = ctx.createRadialGradient(
       centerX,
@@ -56,10 +69,13 @@ export const breathingGlow: VisualizationDefinition<BreathingGlowSettings> = {
       radius,
     );
 
-    gradient.addColorStop(0, alphaColor(settings.color, 0.42 * settings.intensity));
+    gradient.addColorStop(
+      0,
+      alphaColor(settings.color, (0.34 + energy * 0.22) * settings.intensity),
+    );
     gradient.addColorStop(
       Math.min(0.78, 0.38 + settings.softness * 0.34),
-      alphaColor(settings.color, 0.14 * settings.intensity),
+      alphaColor(settings.color, (0.09 + energy * 0.16) * settings.intensity),
     );
     gradient.addColorStop(1, alphaColor(settings.color, 0));
 

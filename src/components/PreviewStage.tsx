@@ -6,6 +6,7 @@ import type {
   BackgroundMotionDirection,
   BackgroundMotionSettings,
 } from "../types/backgroundMotion";
+import type { LyricLine, LyricsSettings } from "../types/lyrics";
 import type {
   AnyVisualizationDefinition,
   NormalizedPoint,
@@ -13,6 +14,7 @@ import type {
 } from "../types/visualization";
 import type { VideoFormatId } from "../types/videoFormat";
 import { getVideoFormatRatio } from "../types/videoFormat";
+import { getActiveLyricIndex } from "../utils/lyrics";
 
 type PreviewStageProps = {
   backgroundImage: BackgroundImageAsset | null;
@@ -23,15 +25,24 @@ type PreviewStageProps = {
   position: NormalizedPoint;
   videoFormatId: VideoFormatId;
   backgroundMotion: BackgroundMotionSettings;
+  lyricLines: LyricLine[];
+  lyricsSettings: LyricsSettings;
+  audioTime: number;
   onPositionChange: (position: NormalizedPoint) => void;
+  onPreviewReady?: (handle: PreviewStageHandle | null) => void;
   getAudioFrame: (time: number) => AudioFrame;
 };
 
-type StageRect = {
+export type StageRect = {
   x: number;
   y: number;
   width: number;
   height: number;
+};
+
+export type PreviewStageHandle = {
+  canvas: HTMLCanvasElement;
+  getStage: () => StageRect;
 };
 
 export function PreviewStage({
@@ -43,7 +54,11 @@ export function PreviewStage({
   position,
   videoFormatId,
   backgroundMotion,
+  lyricLines,
+  lyricsSettings,
+  audioTime,
   onPositionChange,
+  onPreviewReady,
   getAudioFrame,
 }: PreviewStageProps) {
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +69,9 @@ export function PreviewStage({
   const positionRef = useRef(position);
   const videoFormatIdRef = useRef(videoFormatId);
   const backgroundMotionRef = useRef(backgroundMotion);
+  const lyricLinesRef = useRef(lyricLines);
+  const lyricsSettingsRef = useRef(lyricsSettings);
+  const audioTimeRef = useRef(audioTime);
   const getAudioFrameRef = useRef(getAudioFrame);
   const draggingPointerIdRef = useRef<number | null>(null);
   const canDrag = visualization.supportsPositioning || visualization.supportsDrag;
@@ -79,8 +97,35 @@ export function PreviewStage({
   }, [backgroundMotion]);
 
   useEffect(() => {
+    lyricLinesRef.current = lyricLines;
+  }, [lyricLines]);
+
+  useEffect(() => {
+    lyricsSettingsRef.current = lyricsSettings;
+  }, [lyricsSettings]);
+
+  useEffect(() => {
+    audioTimeRef.current = audioTime;
+  }, [audioTime]);
+
+  useEffect(() => {
     getAudioFrameRef.current = getAudioFrame;
   }, [getAudioFrame]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+
+    if (!canvas || !onPreviewReady) {
+      return;
+    }
+
+    onPreviewReady({
+      canvas,
+      getStage: () => ({ ...stageRef.current }),
+    });
+
+    return () => onPreviewReady(null);
+  }, [onPreviewReady]);
 
   const readPointerPosition = useCallback((event: ReactPointerEvent) => {
     const canvas = canvasRef.current;
@@ -290,6 +335,14 @@ export function PreviewStage({
         drawPositionHandle(ctx, stage, currentPosition);
       }
 
+      drawLyrics(
+        ctx,
+        stage,
+        lyricLinesRef.current,
+        lyricsSettingsRef.current,
+        audioTimeRef.current,
+      );
+
       lastTimestamp = timestamp;
       animationFrame = requestAnimationFrame(draw);
     };
@@ -482,18 +535,15 @@ function drawMotionImage(
     imageRatio > stageRatio ? stage.height * imageRatio : stage.width;
   const coverHeight =
     imageRatio > stageRatio ? stage.height : stage.width / imageRatio;
-  const zoomScale = 1 + motion.zoom / 100;
+  const progress = (timestamp / Math.max(1, 18000 / motion.speed)) % 1;
+  const zoomScale = motionZoomScale(motion, timestamp, progress);
   const drawWidth = coverWidth * zoomScale;
   const drawHeight = coverHeight * zoomScale;
   const maxOffsetX = Math.max(0, (drawWidth - stage.width) / 2);
   const maxOffsetY = Math.max(0, (drawHeight - stage.height) / 2);
-  const direction = directionVector(motion.direction);
-  const progress = (timestamp / Math.max(1, 18000 / motion.speed)) % 1;
-  const phase = Math.sin(progress * Math.PI * 2);
-  const offsetX = direction.x * maxOffsetX * phase;
-  const offsetY = direction.y * maxOffsetY * phase;
-  const x = stage.x + (stage.width - drawWidth) / 2 + offsetX;
-  const y = stage.y + (stage.height - drawHeight) / 2 + offsetY;
+  const offset = motionOffset(motion, timestamp, progress, maxOffsetX, maxOffsetY);
+  const x = stage.x + (stage.width - drawWidth) / 2 + offset.x;
+  const y = stage.y + (stage.height - drawHeight) / 2 + offset.y;
 
   ctx.fillStyle = "#151817";
   ctx.fillRect(stage.x, stage.y, stage.width, stage.height);
@@ -504,6 +554,341 @@ function drawMotionImage(
   ctx.drawImage(image, x, y, drawWidth, drawHeight);
   ctx.restore();
   return stage;
+}
+
+function drawLyrics(
+  ctx: CanvasRenderingContext2D,
+  stage: StageRect,
+  lines: LyricLine[],
+  settings: LyricsSettings,
+  currentTime: number,
+) {
+  if (!settings.enabled || lines.length === 0) {
+    return;
+  }
+
+  const activeIndex = getActiveLyricIndex(lines, currentTime);
+
+  if (activeIndex < 0) {
+    return;
+  }
+
+  const currentLine = lines[activeIndex];
+  const nextLine = lines[activeIndex + 1] ?? null;
+  const scale = clamp(Math.min(stage.width, stage.height) / 720, 0.68, 1.6);
+  const baseFontSize = settings.fontSize * scale;
+  const items = buildLyricItems(currentLine, nextLine, settings, baseFontSize);
+  const align = settings.style === "poster" ? "left" : "center";
+  const maxWidth =
+    settings.style === "poster" ? stage.width * 0.72 : stage.width * 0.84;
+  const layout = layoutLyricItems(ctx, items, maxWidth);
+  const anchor = lyricAnchor(stage, settings.position, layout.height);
+  const x =
+    align === "left"
+      ? stage.x + stage.width * 0.1
+      : stage.x + stage.width / 2;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(stage.x, stage.y, stage.width, stage.height);
+  ctx.clip();
+  ctx.textBaseline = "top";
+  ctx.textAlign = align;
+
+  if (settings.shadow) {
+    ctx.shadowColor = "rgba(0, 0, 0, 0.58)";
+    ctx.shadowBlur = Math.max(8, baseFontSize * 0.34);
+    ctx.shadowOffsetY = Math.max(2, baseFontSize * 0.08);
+  }
+
+  if (settings.background) {
+    drawLyricsBackground(ctx, x, anchor.y, layout.width, layout.height, align);
+  }
+
+  let y = anchor.y + layout.padding;
+  for (const item of layout.items) {
+    ctx.font = lyricFont(item.fontSize, item.weight);
+    ctx.fillStyle = settings.color;
+    ctx.globalAlpha = item.alpha;
+
+    for (const text of item.lines) {
+      ctx.fillText(text, x, y);
+      y += item.lineHeight;
+    }
+
+    y += item.gap;
+  }
+
+  ctx.restore();
+}
+
+function buildLyricItems(
+  currentLine: LyricLine,
+  nextLine: LyricLine | null,
+  settings: LyricsSettings,
+  baseFontSize: number,
+) {
+  if (settings.style === "karaoke") {
+    return [
+      {
+        text: currentLine.text,
+        fontSize: baseFontSize * 1.05,
+        weight: 820,
+        alpha: 1,
+      },
+      ...(settings.showNextLine && nextLine
+        ? [
+            {
+              text: nextLine.text,
+              fontSize: baseFontSize * 0.68,
+              weight: 720,
+              alpha: 0.52,
+            },
+          ]
+        : []),
+    ];
+  }
+
+  if (settings.style === "center") {
+    return [
+      {
+        text: currentLine.text,
+        fontSize: baseFontSize * 1.24,
+        weight: 840,
+        alpha: 1,
+      },
+    ];
+  }
+
+  if (settings.style === "poster") {
+    return [
+      {
+        text: currentLine.text.toUpperCase(),
+        fontSize: baseFontSize * 1.34,
+        weight: 900,
+        alpha: 1,
+      },
+      ...(settings.showNextLine && nextLine
+        ? [
+            {
+              text: nextLine.text,
+              fontSize: baseFontSize * 0.6,
+              weight: 760,
+              alpha: 0.58,
+            },
+          ]
+        : []),
+    ];
+  }
+
+  return [
+    {
+      text: currentLine.text,
+      fontSize: baseFontSize,
+      weight: 780,
+      alpha: 1,
+    },
+  ];
+}
+
+function layoutLyricItems(
+  ctx: CanvasRenderingContext2D,
+  items: Array<{
+    text: string;
+    fontSize: number;
+    weight: number;
+    alpha: number;
+  }>,
+  maxWidth: number,
+) {
+  const padding = Math.max(12, maxWidth * 0.018);
+  let width = 0;
+  let height = padding * 2;
+  const layoutItems = items.map((item, index) => {
+    ctx.font = lyricFont(item.fontSize, item.weight);
+    const lines = wrapLyricText(ctx, item.text, maxWidth);
+    const lineHeight = item.fontSize * 1.16;
+    const gap = index === items.length - 1 ? 0 : item.fontSize * 0.22;
+
+    for (const line of lines) {
+      width = Math.max(width, ctx.measureText(line).width);
+    }
+
+    height += lines.length * lineHeight + gap;
+
+    return {
+      ...item,
+      lines,
+      lineHeight,
+      gap,
+    };
+  });
+
+  return {
+    items: layoutItems,
+    width: Math.min(maxWidth, width) + padding * 2,
+    height,
+    padding,
+  };
+}
+
+function wrapLyricText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+) {
+  const words = text.split(/\s+/).filter(Boolean);
+
+  if (words.length === 0) {
+    return [""];
+  }
+
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+
+    if (ctx.measureText(nextLine).width <= maxWidth || !currentLine) {
+      currentLine = nextLine;
+      continue;
+    }
+
+    lines.push(currentLine);
+    currentLine = word;
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+function lyricAnchor(stage: StageRect, position: LyricsSettings["position"], height: number) {
+  if (position === "top") {
+    return { y: stage.y + stage.height * 0.12 };
+  }
+
+  if (position === "center") {
+    return { y: stage.y + (stage.height - height) / 2 };
+  }
+
+  return { y: stage.y + stage.height * 0.84 - height };
+}
+
+function drawLyricsBackground(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  align: "left" | "center",
+) {
+  const left = align === "left" ? x - width * 0.04 : x - width / 2;
+  const radius = Math.min(12, height * 0.18);
+
+  ctx.save();
+  ctx.shadowColor = "transparent";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.46)";
+  ctx.beginPath();
+  roundedRect(ctx, left, y, width, height, radius);
+  ctx.fill();
+  ctx.restore();
+}
+
+function roundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+}
+
+function lyricFont(fontSize: number, weight: number) {
+  return `${weight} ${fontSize}px Inter, ui-sans-serif, system-ui, sans-serif`;
+}
+
+function motionZoomScale(
+  motion: BackgroundMotionSettings,
+  timestamp: number,
+  progress: number,
+) {
+  const zoomRoom = motion.zoom / 100;
+  const easedProgress = (1 - Math.cos(progress * Math.PI)) / 2;
+
+  if (motion.direction === "zoom-in") {
+    return 1 + zoomRoom * easedProgress;
+  }
+
+  if (motion.direction === "zoom-out") {
+    return 1 + zoomRoom * (1 - easedProgress);
+  }
+
+  if (motion.direction === "zoom-in-out") {
+    const zoomPhase = (1 - Math.cos(progress * Math.PI * 2)) / 2;
+    return 1 + zoomRoom * (0.28 + zoomPhase * 0.72);
+  }
+
+  if (motion.direction === "organic-drift") {
+    const time = (timestamp / 1000) * Math.max(0.2, motion.speed);
+    const drift =
+      (Math.sin(time * 0.23 + 1.4) + Math.sin(time * 0.071 + 4.2) * 0.52) /
+      1.52;
+
+    return 1 + zoomRoom * (0.48 + (drift + 1) * 0.22);
+  }
+
+  return 1 + zoomRoom;
+}
+
+function motionOffset(
+  motion: BackgroundMotionSettings,
+  timestamp: number,
+  progress: number,
+  maxOffsetX: number,
+  maxOffsetY: number,
+) {
+  if (motion.direction === "organic-drift") {
+    const time = (timestamp / 1000) * Math.max(0.2, motion.speed);
+    return {
+      x:
+        maxOffsetX *
+        ((Math.sin(time * 0.19 + 0.7) + Math.sin(time * 0.047 + 3.8) * 0.64) /
+          1.64),
+      y:
+        maxOffsetY *
+        ((Math.cos(time * 0.17 + 2.3) + Math.sin(time * 0.061 + 5.1) * 0.58) /
+          1.58),
+    };
+  }
+
+  if (
+    motion.direction === "zoom-in" ||
+    motion.direction === "zoom-out" ||
+    motion.direction === "zoom-in-out"
+  ) {
+    return { x: 0, y: 0 };
+  }
+
+  const direction = directionVector(motion.direction);
+  const phase = Math.sin(progress * Math.PI * 2);
+
+  return {
+    x: direction.x * maxOffsetX * phase,
+    y: direction.y * maxOffsetY * phase,
+  };
 }
 
 function directionVector(direction: BackgroundMotionDirection) {

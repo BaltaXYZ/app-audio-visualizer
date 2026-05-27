@@ -1,8 +1,36 @@
 export const videoFormats = [
-  { id: "16-9", label: "16:9 Landscape", width: 16, height: 9 },
-  { id: "9-16", label: "9:16 Portrait", width: 9, height: 16 },
-  { id: "1-1", label: "1:1 Square", width: 1, height: 1 },
-  { id: "4-5", label: "4:5 Portrait", width: 4, height: 5 },
+  {
+    id: "16-9",
+    label: "16:9 Landscape",
+    width: 16,
+    height: 9,
+    exportWidth: 1280,
+    exportHeight: 720,
+  },
+  {
+    id: "9-16",
+    label: "9:16 Portrait",
+    width: 9,
+    height: 16,
+    exportWidth: 720,
+    exportHeight: 1280,
+  },
+  {
+    id: "1-1",
+    label: "1:1 Square",
+    width: 1,
+    height: 1,
+    exportWidth: 1080,
+    exportHeight: 1080,
+  },
+  {
+    id: "4-5",
+    label: "4:5 Portrait",
+    width: 4,
+    height: 5,
+    exportWidth: 864,
+    exportHeight: 1080,
+  },
 ] as const;
 
 export type VideoFormatId = (typeof videoFormats)[number]["id"];

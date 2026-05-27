@@ -1,5 +1,5 @@
 import type { VisualizationDefinition } from "../types/visualization";
-import { normalizedFrequencyValue, stageScale } from "./helpers";
+import { audioResponse, normalizedFrequencyValue, stageScale } from "./helpers";
 
 type RadialEqualizerSettings = {
   color: string;
@@ -7,6 +7,7 @@ type RadialEqualizerSettings = {
   barHeight: number;
   segmentCount: number;
   spin: number;
+  audioResponse: number;
 };
 
 export const radialEqualizer: VisualizationDefinition<RadialEqualizerSettings> = {
@@ -20,6 +21,7 @@ export const radialEqualizer: VisualizationDefinition<RadialEqualizerSettings> =
     barHeight: 150,
     segmentCount: 72,
     spin: 0.18,
+    audioResponse: 1.35,
   },
   controls: [
     { id: "color", label: "Color", type: "color" },
@@ -41,6 +43,14 @@ export const radialEqualizer: VisualizationDefinition<RadialEqualizerSettings> =
       max: 1.2,
       step: 0.02,
     },
+    {
+      id: "audioResponse",
+      label: "Audio response",
+      type: "range",
+      min: 0.5,
+      max: 3,
+      step: 0.05,
+    },
   ],
   supportsDrag: true,
   supportsPositioning: true,
@@ -48,7 +58,11 @@ export const radialEqualizer: VisualizationDefinition<RadialEqualizerSettings> =
   render: ({ ctx, centerX, centerY, width, height, elapsedMs }, audio, settings) => {
     const scale = stageScale(width, height);
     const count = Math.max(8, Math.round(settings.segmentCount));
-    const innerRadius = settings.radius * scale * (0.92 + audio.bass * 0.12);
+    const bassResponse = audioResponse(audio.bass, settings.audioResponse);
+    const midsResponse = audioResponse(audio.mids, settings.audioResponse);
+    const trebleResponse = audioResponse(audio.treble, settings.audioResponse);
+    const volumeResponse = audioResponse(audio.volume, settings.audioResponse);
+    const innerRadius = settings.radius * scale * (0.9 + bassResponse * 0.18);
     const maxHeight = settings.barHeight * scale;
     const rotation = (elapsedMs / 1000) * settings.spin;
 
@@ -56,20 +70,23 @@ export const radialEqualizer: VisualizationDefinition<RadialEqualizerSettings> =
     ctx.globalCompositeOperation = "screen";
     ctx.strokeStyle = settings.color;
     ctx.shadowColor = settings.color;
-    ctx.shadowBlur = 7 + audio.treble * 18;
+    ctx.shadowBlur = 7 + trebleResponse * 24;
     ctx.lineCap = "round";
 
     for (let index = 0; index < count; index += 1) {
-      const value = normalizedFrequencyValue(audio.frequencyData, index, count);
+      const value = audioResponse(
+        normalizedFrequencyValue(audio.frequencyData, index, count),
+        settings.audioResponse,
+      );
       const angle = (index / count) * Math.PI * 2 + rotation;
-      const heightBoost = 0.24 + value * 0.88 + audio.mids * 0.16;
+      const heightBoost = 0.2 + value * 1.02 + midsResponse * 0.2;
       const outerRadius = innerRadius + maxHeight * heightBoost;
       const x1 = centerX + Math.cos(angle) * innerRadius;
       const y1 = centerY + Math.sin(angle) * innerRadius;
       const x2 = centerX + Math.cos(angle) * outerRadius;
       const y2 = centerY + Math.sin(angle) * outerRadius;
 
-      ctx.globalAlpha = 0.2 + value * 0.72 + audio.volume * 0.12;
+      ctx.globalAlpha = 0.18 + value * 0.76 + volumeResponse * 0.16;
       ctx.lineWidth = Math.max(1.5, 2.4 * scale + value * 4 * scale);
       ctx.beginPath();
       ctx.moveTo(x1, y1);

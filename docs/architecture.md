@@ -18,7 +18,8 @@ Ljudet analyseras lokalt med Web Audio API. Ingen ljudfil eller bildfil ska skic
 6. Vald visualisering renderas pa canvas ovanpa bakgrundsbilden.
 7. Reglage uppdaterar vald visualiserings installningar i state.
 8. Dragbara visualiseringsobjekt uppdaterar position i state.
-9. Forhandsvisningen ritar om direkt.
+9. Eventuell tidsatt lattext valjs ut fran ljudets aktuella tid.
+10. Forhandsvisningen ritar om direkt.
 
 ## Planerad källkodsstruktur
 
@@ -142,6 +143,7 @@ Projektets state ska minst innehalla:
 - Installningar per visualisering: sparade med visualiseringens `id`.
 - Positioner: koordinater i normaliserad preview-yta, exempelvis `x: 0.5`, `y: 0.5`.
 - Bakgrundsrorelse: av/pa, riktning, hastighet och extra zoomutrymme for Ken Burns-liknande pan/zoom.
+- Lattext: applicerade rader, redigerbar drafttext, dirty-status, aktiv timingrad och textstil.
 - Preview: scenstorlek, skala, aktiv dragning och renderstatus.
 - Visualiseringsinstanser: `instanceId`, `visualizationId`, `settings`, `position`, `zIndex` och eventuell `label`.
 
@@ -159,9 +161,11 @@ type VisualizationInstance = {
 };
 ```
 
-## Projekt-snapshot och framtida export
+## Projekt-snapshot och videoexport
 
-STEG 5 introducerar en serialiserbar `ProjectSnapshot` i `src/types/project.ts` och skapande funktion i `src/state/projectSnapshot.ts`. Den ska inte exportera video eller skriva filer i nuvarande version, men den markerar vilken del av state som kan sparas senare utan att blanda in lokala `File`-objekt eller kortlivade `objectUrl`-varden.
+STEG 5 introducerar en serialiserbar `ProjectSnapshot` i `src/types/project.ts` och skapande funktion i `src/state/projectSnapshot.ts`. Den markerar vilken del av state som kan sparas senare utan att blanda in lokala `File`-objekt eller kortlivade `objectUrl`-varden.
+
+STEG 7 lagger till lokal videoexport via `src/components/ExportPanel.tsx` och `src/utils/videoExport.ts`. Exporten spelar in den valda preview-stage-ytan fran canvasen tillsammans med ljudspelarens ljudstream och skriver en nedladdningsbar fil med browserns `MediaRecorder`. MP4 erbjuds nar aktuell webblasare stoder relevant MP4/H.264/AAC-inspelning; WebM finns som alternativ. Ingen fil skickas till server.
 
 Snapshoten innehaller:
 
@@ -170,16 +174,34 @@ Snapshoten innehaller:
 - Vald visualisering.
 - Filreferenser for bild och ljud med namn, typ, storlek och relevant metadata.
 - Bakgrundsrorelse for Ken Burns-liknande preview.
+- Lattextrader och textinstallningar.
 - En aktiv visualiseringsinstans med `instanceId`, `visualizationId`, `settings`, `position` och `zIndex`.
 - Sparade settings och positioner per visualisering.
 
-Detta forbereder for:
+Snapshoten forbereder for:
 
 - Projektsparning och projektimport.
 - Flera samtidiga visualiseringsinstanser.
-- Exportfloden dar renderaren kan lasa en stabil projektmodell.
+- Mer avancerade exportfloden dar renderaren kan lasa en stabil projektmodell.
 
-Snapshoten ska inte tolkas som ett permanent filformat an. Om export eller projektsparning byggs senare ska formatet versionshanteras och migreringar laggas till.
+Snapshoten ska inte tolkas som ett permanent filformat an. Om projektsparning eller mer avancerad export byggs senare ska formatet versionshanteras och migreringar laggas till.
+
+## Lattext
+
+Lattext hanteras lokalt i `src/utils/lyrics.ts` och state. Appen kan redigera LRC-rader pa formen `[mm:ss.xx] text` eller vanlig text utan tidskoder. Parsern sorterar tidsatta rader, skapar `endTime` fran nasta rad och rapporterar varningar for rader som inte kan tolkas.
+
+Lyrics-editorn arbetar med en drafttext och en applicerad lyrics-lista. Manuella andringar i textfältet markeras som `Unapplied changes` och borjar galla for preview/export forst nar anvandaren klickar `Apply lyrics`. Det gor att halvredigerade tidskoder inte slar igenom i videon.
+
+`PreviewStage` laser aktuell ljudtid fran ljudspelaren och ritar aktiv textrad efter visualiseringarna. Eftersom texten ritas i samma canvas-stage som previewn foljer den med i videoexporten utan separat exportlogik.
+
+Forsta textsteget innehaller fyra stilar:
+
+- `Subtitle`
+- `Center lyric`
+- `Karaoke current/next`
+- `Poster block`
+
+Det finns ingen automatisk transkribering eller extern lattexttjanst i denna version.
 
 ## Ljudanalys
 
@@ -299,7 +321,7 @@ Nar appkod finns ska verifiering ske i tre lager:
 
 ## Framtida utbyggnad
 
-Arkitekturen ska inte implementera export, sparade projekt eller tidslinje i forsta versionen, men den ska inte blockera dem. Darfor ska:
+Arkitekturen ska inte blockera sparade projekt, tidslinje eller mer avancerade exportfloden. Darfor ska:
 
 - State vara serialiserbart sa langt som mojligt.
 - Renderaren kunna anropas deterministiskt for en given tidpunkt.

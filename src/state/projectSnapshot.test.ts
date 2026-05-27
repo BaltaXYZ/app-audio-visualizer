@@ -32,6 +32,13 @@ describe("createProjectSnapshot", () => {
         speed: 0.8,
         zoom: 16,
       },
+      lyricLines: [
+        { id: "lyric-1", startTime: 1.2, endTime: 3.4, text: "Hello" },
+      ],
+      lyricsSettings: {
+        ...initialAppState.lyricsSettings,
+        style: "center",
+      },
       visualizationPositions: {
         ...initialAppState.visualizationPositions,
         "radial-equalizer": { x: 0.35, y: 0.6 },
@@ -51,6 +58,10 @@ describe("createProjectSnapshot", () => {
       speed: 0.8,
       zoom: 16,
     });
+    expect(snapshot.lyrics.lines).toEqual([
+      { id: "lyric-1", startTime: 1.2, endTime: 3.4, text: "Hello" },
+    ]);
+    expect(snapshot.lyrics.settings.style).toBe("center");
     expect(snapshot.visualizationInstances).toEqual([
       {
         instanceId: "active-visualization",
