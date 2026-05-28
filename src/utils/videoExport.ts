@@ -32,6 +32,22 @@ export type VideoExportProgress = {
   totalFrames: number;
   elapsedSeconds: number;
   durationSeconds: number;
+  wallClockSeconds?: number;
+  framesPerSecond?: number;
+  estimatedRemainingSeconds?: number | null;
+};
+
+type VideoExportDiagnostics = {
+  loadAndDecodeMs: number;
+  audioTimelineMs: number;
+  audioEncodeMs: number;
+  renderMs: number;
+  videoEncodeMs: number;
+  finalizeMs: number;
+  totalMs: number;
+  framesRendered: number;
+  framesPerSecond: number;
+  realtimeFactor: number;
 };
 
 export type ExportFrameSample = {
@@ -43,6 +59,7 @@ export type ExportFrameSample = {
 export type RenderProjectVideoOptions = {
   backgroundImage: BackgroundImageAsset;
   audioTrack: AudioTrackAsset;
+  visualizationEnabled: boolean;
   visualization: AnyVisualizationDefinition;
   settings: VisualizationSettings;
   position: NormalizedPoint;
@@ -64,6 +81,7 @@ const defaultFrameRate = 30;
 export async function renderProjectVideo({
   backgroundImage,
   audioTrack,
+  visualizationEnabled,
   visualization,
   settings,
   position,
@@ -81,16 +99,33 @@ export async function renderProjectVideo({
 }: RenderProjectVideoOptions) {
   throwIfAborted(signal);
 
+  const exportStartedAt = performance.now();
+  const diagnostics: VideoExportDiagnostics = {
+    loadAndDecodeMs: 0,
+    audioTimelineMs: 0,
+    audioEncodeMs: 0,
+    renderMs: 0,
+    videoEncodeMs: 0,
+    finalizeMs: 0,
+    totalMs: 0,
+    framesRendered: 0,
+    framesPerSecond: 0,
+    realtimeFactor: 0,
+  };
+  const loadStartedAt = performance.now();
   const [image, audioBuffer] = await Promise.all([
     loadImage(backgroundImage),
     decodeAudioFile(audioTrack.file),
   ]);
+  diagnostics.loadAndDecodeMs = performance.now() - loadStartedAt;
   throwIfAborted(signal);
 
+  const timelineStartedAt = performance.now();
   const timeline = buildOfflineAudioTimeline(audioBuffer, {
     frameRate,
     signal,
   });
+  diagnostics.audioTimelineMs = performance.now() - timelineStartedAt;
   const frameSchedule = createExportFrameSchedule(
     timeline.durationSeconds,
     frameRate,
@@ -107,7 +142,7 @@ export async function renderProjectVideo({
   const target = new BufferTarget();
   const output = new Output({
     format:
-      profile.format.id === "mp4"
+      profile.format.container === "mp4"
         ? new Mp4OutputFormat()
         : new WebMOutputFormat(),
     target,
@@ -118,7 +153,7 @@ export async function renderProjectVideo({
     fullCodecString: profile.format.fullVideoCodecString,
     alpha: "discard",
     keyFrameInterval: 2,
-    latencyMode: "quality",
+    latencyMode: profile.format.latencyMode,
   });
   const audioSource = new AudioBufferSource({
     codec: profile.format.audioCodec,
@@ -136,8 +171,10 @@ export async function renderProjectVideo({
     await output.start();
     throwIfAborted(signal);
 
+    const audioEncodeStartedAt = performance.now();
     await audioSource.add(audioBuffer);
     audioSource.close();
+    diagnostics.audioEncodeMs = performance.now() - audioEncodeStartedAt;
     throwIfAborted(signal);
 
     for (const frame of frameSchedule) {
@@ -146,11 +183,13 @@ export async function renderProjectVideo({
       const elapsedMs = frame.timestampSeconds * 1000;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, outputWidth, outputHeight);
+      const renderStartedAt = performance.now();
       renderPreviewFrame({
         ctx,
         width: outputWidth,
         height: outputHeight,
         backgroundImage: image,
+        visualizationEnabled,
         visualization,
         settings,
         position,
@@ -165,23 +204,51 @@ export async function renderProjectVideo({
         deltaMs: frame.durationSeconds * 1000,
         showPositionHandle: false,
       });
+      diagnostics.renderMs += performance.now() - renderStartedAt;
 
+      const videoEncodeStartedAt = performance.now();
       await videoSource.add(frame.timestampSeconds, frame.durationSeconds, {
         keyFrame: frame.index % (frameRate * 2) === 0,
       });
+      diagnostics.videoEncodeMs += performance.now() - videoEncodeStartedAt;
+
+      const framesRendered = frame.index + 1;
+      const wallClockSeconds = (performance.now() - exportStartedAt) / 1000;
+      const framesPerSecond =
+        wallClockSeconds > 0 ? framesRendered / wallClockSeconds : 0;
+      const estimatedRemainingSeconds =
+        framesPerSecond > 0
+          ? (frameSchedule.length - framesRendered) / framesPerSecond
+          : null;
+      diagnostics.framesRendered = framesRendered;
+      diagnostics.framesPerSecond = framesPerSecond;
+      diagnostics.realtimeFactor =
+        wallClockSeconds > 0
+          ? Math.min(
+              timeline.durationSeconds,
+              frame.timestampSeconds + frame.durationSeconds,
+            ) / wallClockSeconds
+          : 0;
       onProgress?.({
-        framesRendered: frame.index + 1,
+        framesRendered,
         totalFrames: frameSchedule.length,
         elapsedSeconds: Math.min(
           timeline.durationSeconds,
           frame.timestampSeconds + frame.durationSeconds,
         ),
         durationSeconds: timeline.durationSeconds,
+        wallClockSeconds,
+        framesPerSecond,
+        estimatedRemainingSeconds,
       });
     }
 
     videoSource.close();
+    const finalizeStartedAt = performance.now();
     await output.finalize();
+    diagnostics.finalizeMs = performance.now() - finalizeStartedAt;
+    diagnostics.totalMs = performance.now() - exportStartedAt;
+    logVideoExportDiagnostics(diagnostics);
   } catch (error) {
     if (output.state !== "canceled" && output.state !== "finalized") {
       await output.cancel();
@@ -268,4 +335,23 @@ function throwIfAborted(signal: AbortSignal | undefined) {
   if (signal?.aborted) {
     throw new DOMException("Export cancelled.", "AbortError");
   }
+}
+
+function logVideoExportDiagnostics(diagnostics: VideoExportDiagnostics) {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+
+  console.debug("Video export diagnostics", {
+    ...diagnostics,
+    loadAndDecodeMs: Math.round(diagnostics.loadAndDecodeMs),
+    audioTimelineMs: Math.round(diagnostics.audioTimelineMs),
+    audioEncodeMs: Math.round(diagnostics.audioEncodeMs),
+    renderMs: Math.round(diagnostics.renderMs),
+    videoEncodeMs: Math.round(diagnostics.videoEncodeMs),
+    finalizeMs: Math.round(diagnostics.finalizeMs),
+    totalMs: Math.round(diagnostics.totalMs),
+    framesPerSecond: Number(diagnostics.framesPerSecond.toFixed(2)),
+    realtimeFactor: Number(diagnostics.realtimeFactor.toFixed(2)),
+  });
 }

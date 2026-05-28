@@ -28,6 +28,7 @@ export type RenderPreviewFrameOptions = {
   width: number;
   height: number;
   backgroundImage: HTMLImageElement | null;
+  visualizationEnabled: boolean;
   visualization: AnyVisualizationDefinition;
   settings: VisualizationSettings;
   position: NormalizedPoint;
@@ -48,6 +49,7 @@ export function renderPreviewFrame({
   width,
   height,
   backgroundImage,
+  visualizationEnabled,
   visualization,
   settings,
   position,
@@ -76,28 +78,31 @@ export function renderPreviewFrame({
     drawImageEffects(ctx, stage, imageEffects, audioFrame, elapsedMs);
   }
 
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(stage.x, stage.y, stage.width, stage.height);
-  ctx.clip();
-  ctx.translate(stage.x, stage.y);
-  visualization.render(
-    {
-      ctx,
-      width: stage.width,
-      height: stage.height,
-      centerX: stage.width * clamp(position.x, 0, 1),
-      centerY: stage.height * clamp(position.y, 0, 1),
-      position,
-      elapsedMs,
-      deltaMs,
-    },
-    audioFrame,
-    settings,
-  );
-  ctx.restore();
+  if (visualizationEnabled) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(stage.x, stage.y, stage.width, stage.height);
+    ctx.clip();
+    ctx.translate(stage.x, stage.y);
+    visualization.render(
+      {
+        ctx,
+        width: stage.width,
+        height: stage.height,
+        centerX: stage.width * clamp(position.x, 0, 1),
+        centerY: stage.height * clamp(position.y, 0, 1),
+        position,
+        elapsedMs,
+        deltaMs,
+      },
+      audioFrame,
+      settings,
+    );
+    ctx.restore();
+  }
 
   if (
+    visualizationEnabled &&
     showPositionHandle &&
     (visualization.supportsPositioning || visualization.supportsDrag)
   ) {

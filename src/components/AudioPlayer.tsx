@@ -8,6 +8,7 @@ type AudioPlayerProps = {
   error: string | null;
   analyzerStatus: AudioAnalyzerStatus;
   analyzerError: string | null;
+  disabled?: boolean;
   onAudioElementChange: (element: HTMLAudioElement | null) => void;
   onMetadata: (duration: number) => void;
   onPlaybackError: () => void;
@@ -19,12 +20,17 @@ export function AudioPlayer({
   error,
   analyzerStatus,
   analyzerError,
+  disabled = false,
   onAudioElementChange,
   onMetadata,
   onPlaybackError,
 }: AudioPlayerProps) {
   return (
-    <section className="audio-card" aria-label="Audio player">
+    <section
+      className={`audio-card ${disabled ? "is-locked" : ""}`}
+      aria-label="Audio player"
+      aria-disabled={disabled}
+    >
       <div>
         <p className="eyebrow">Audio</p>
         <h2>{audioTrack ? audioTrack.name : "No audio selected"}</h2>
@@ -35,9 +41,10 @@ export function AudioPlayer({
           <audio
             key={audioTrack.objectUrl}
             ref={onAudioElementChange}
-            controls
+            controls={!disabled}
             preload="metadata"
             src={audioTrack.objectUrl}
+            tabIndex={disabled ? -1 : undefined}
             onLoadedMetadata={(event) =>
               onMetadata(event.currentTarget.duration)
             }

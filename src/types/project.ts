@@ -25,6 +25,7 @@ export type VisualizationInstance = {
 export type ProjectSnapshot = {
   schemaVersion: 1;
   createdAt: string;
+  visualizationEnabled: boolean;
   selectedVisualizationId: string;
   videoFormatId: VideoFormatId;
   assets: {

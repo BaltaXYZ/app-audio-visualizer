@@ -7,8 +7,23 @@ import {
 
 export const videoExportFormats = [
   {
+    id: "mp4-fast",
+    label: "Fast MP4",
+    container: "mp4",
+    extension: "mp4",
+    mimeType: "video/mp4",
+    videoCodec: "avc",
+    audioCodec: "aac",
+    fullVideoCodecString: "avc1.4d0034",
+    fullAudioCodecString: "mp4a.40.2",
+    videoBitrate: 6_000_000,
+    audioBitrate: 192_000,
+    latencyMode: "realtime",
+  },
+  {
     id: "mp4",
     label: "MP4",
+    container: "mp4",
     extension: "mp4",
     mimeType: "video/mp4",
     videoCodec: "avc",
@@ -17,10 +32,12 @@ export const videoExportFormats = [
     fullAudioCodecString: "mp4a.40.2",
     videoBitrate: 8_000_000,
     audioBitrate: 192_000,
+    latencyMode: "quality",
   },
   {
     id: "webm",
     label: "WebM",
+    container: "webm",
     extension: "webm",
     mimeType: "video/webm",
     videoCodec: "vp9",
@@ -29,14 +46,18 @@ export const videoExportFormats = [
     fullAudioCodecString: "opus",
     videoBitrate: 7_000_000,
     audioBitrate: 160_000,
+    latencyMode: "realtime",
   },
 ] as const satisfies readonly VideoExportFormat[];
 
 export type VideoExportFormatId = (typeof videoExportFormats)[number]["id"];
+export type VideoExportLatencyMode = "quality" | "realtime";
+export type VideoExportContainer = "mp4" | "webm";
 
 export type VideoExportFormat = {
   id: string;
   label: string;
+  container: VideoExportContainer;
   extension: string;
   mimeType: string;
   videoCodec: VideoCodec;
@@ -45,6 +66,7 @@ export type VideoExportFormat = {
   fullAudioCodecString: string;
   videoBitrate: number;
   audioBitrate: number;
+  latencyMode: VideoExportLatencyMode;
 };
 
 export type VideoExportProfile = {
@@ -65,7 +87,7 @@ export type VideoExportSupportOptions = {
   support?: VideoExportCodecSupport | null;
 };
 
-export const defaultVideoExportFormatId: VideoExportFormatId = "mp4";
+export const defaultVideoExportFormatId: VideoExportFormatId = "mp4-fast";
 
 export function getVideoExportFormat(id: VideoExportFormatId) {
   return (
@@ -95,6 +117,7 @@ export async function getSupportedVideoExportProfile(
       height,
       bitrate: format.videoBitrate,
       fullCodecString: format.fullVideoCodecString,
+      latencyMode: format.latencyMode,
     }),
     support.canEncodeAudio(format.audioCodec, {
       numberOfChannels,

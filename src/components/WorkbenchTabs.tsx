@@ -18,12 +18,14 @@ const workbenchTabs: Array<{ id: WorkbenchTabId; label: string }> = [
 type WorkbenchTabsProps = {
   activeTab: WorkbenchTabId;
   children: ReactNode;
+  disabled?: boolean;
   onTabChange: (tabId: WorkbenchTabId) => void;
 };
 
 export function WorkbenchTabs({
   activeTab,
   children,
+  disabled = false,
   onTabChange,
 }: WorkbenchTabsProps) {
   return (
@@ -39,6 +41,7 @@ export function WorkbenchTabs({
             aria-controls="workbench-panel"
             className={activeTab === tab.id ? "is-active" : undefined}
             data-testid={`workbench-tab-${tab.id}`}
+            disabled={disabled}
             onClick={() => onTabChange(tab.id)}
           >
             {tab.label}
@@ -52,7 +55,9 @@ export function WorkbenchTabs({
         aria-labelledby={`workbench-tab-${activeTab}`}
         data-testid="workbench-panel"
       >
-        {children}
+        <fieldset className="interaction-lock-fieldset" disabled={disabled}>
+          {children}
+        </fieldset>
       </div>
     </section>
   );

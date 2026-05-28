@@ -9,9 +9,10 @@ import {
 } from "./videoExport";
 
 describe("video export formats", () => {
-  it("offers MP4 before WebM", () => {
-    expect(defaultVideoExportFormatId).toBe("mp4");
+  it("offers Fast MP4 before quality MP4 and WebM", () => {
+    expect(defaultVideoExportFormatId).toBe("mp4-fast");
     expect(videoExportFormats.map((format) => format.id)).toEqual([
+      "mp4-fast",
       "mp4",
       "webm",
     ]);
@@ -24,7 +25,7 @@ describe("video export formats", () => {
     } as VideoExportCodecSupport;
 
     await expect(
-      getSupportedVideoExportProfile("mp4", {
+      getSupportedVideoExportProfile("mp4-fast", {
         width: 1280,
         height: 720,
         support,
@@ -40,8 +41,22 @@ describe("video export formats", () => {
   });
 
   it("stores file extensions with the export formats", () => {
+    expect(getVideoExportFormat("mp4-fast").extension).toBe("mp4");
     expect(getVideoExportFormat("mp4").extension).toBe("mp4");
     expect(getVideoExportFormat("webm").extension).toBe("webm");
+  });
+
+  it("maps export profiles to their output containers", () => {
+    expect(getVideoExportFormat("mp4-fast").container).toBe("mp4");
+    expect(getVideoExportFormat("mp4").container).toBe("mp4");
+    expect(getVideoExportFormat("webm").container).toBe("webm");
+  });
+
+  it("uses realtime latency for the default fast export profile", () => {
+    expect(getVideoExportFormat(defaultVideoExportFormatId).latencyMode).toBe(
+      "realtime",
+    );
+    expect(getVideoExportFormat("mp4").latencyMode).toBe("quality");
   });
 
   it("returns no support when WebCodecs support is unavailable", async () => {

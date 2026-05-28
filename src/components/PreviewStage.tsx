@@ -21,6 +21,8 @@ type PreviewStageProps = {
   backgroundImage: BackgroundImageAsset | null;
   status: LoadStatus;
   error: string | null;
+  isActive: boolean;
+  visualizationEnabled: boolean;
   visualization: AnyVisualizationDefinition;
   settings: VisualizationSettings;
   position: NormalizedPoint;
@@ -38,6 +40,8 @@ export function PreviewStage({
   backgroundImage,
   status,
   error,
+  isActive,
+  visualizationEnabled,
   visualization,
   settings,
   position,
@@ -53,6 +57,7 @@ export function PreviewStage({
   const shellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<StageRect>({ x: 0, y: 0, width: 1, height: 1 });
+  const visualizationEnabledRef = useRef(visualizationEnabled);
   const visualizationRef = useRef(visualization);
   const settingsRef = useRef(settings);
   const positionRef = useRef(position);
@@ -64,7 +69,13 @@ export function PreviewStage({
   const audioTimeRef = useRef(audioTime);
   const getAudioFrameRef = useRef(getAudioFrame);
   const draggingPointerIdRef = useRef<number | null>(null);
-  const canDrag = visualization.supportsPositioning || visualization.supportsDrag;
+  const canDrag =
+    visualizationEnabled &&
+    (visualization.supportsPositioning || visualization.supportsDrag);
+
+  useEffect(() => {
+    visualizationEnabledRef.current = visualizationEnabled;
+  }, [visualizationEnabled]);
 
   useEffect(() => {
     visualizationRef.current = visualization;
@@ -217,7 +228,7 @@ export function PreviewStage({
     const shell = shellRef.current;
     const canvas = canvasRef.current;
 
-    if (!shell || !canvas) {
+    if (!isActive || !shell || !canvas) {
       return;
     }
 
@@ -266,6 +277,7 @@ export function PreviewStage({
         width,
         height,
         backgroundImage: image,
+        visualizationEnabled: visualizationEnabledRef.current,
         visualization: visualizationRef.current,
         settings: settingsRef.current,
         position: positionRef.current,
@@ -301,7 +313,7 @@ export function PreviewStage({
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
     };
-  }, [backgroundImage?.objectUrl]);
+  }, [backgroundImage?.objectUrl, isActive]);
 
   const showEmptyState = !backgroundImage && !error;
   const showPreviewError = !backgroundImage && error;
@@ -319,7 +331,9 @@ export function PreviewStage({
         <div>
           <p className="eyebrow">Live-preview</p>
           <h2>{backgroundImage ? backgroundImage.name : "No image selected"}</h2>
-          <p className="preview-visualization">{visualization.name}</p>
+          <p className="preview-visualization">
+            {visualizationEnabled ? visualization.name : "No visual"}
+          </p>
         </div>
         <p className="preview-status">{statusLabel}</p>
       </div>

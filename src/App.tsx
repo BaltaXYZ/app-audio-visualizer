@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { AudioPlayer } from "./components/AudioPlayer";
 import { ExportPanel } from "./components/ExportPanel";
 import { ImageFiltersPanel } from "./components/ImageFiltersPanel";
@@ -12,6 +12,7 @@ import type { WorkbenchTabId } from "./components/WorkbenchTabs";
 import { useAudioAnalyzer } from "./hooks/useAudioAnalyzer";
 import { useAudioClock } from "./hooks/useAudioClock";
 import { appReducer, initialAppState } from "./state/appReducer";
+import type { AppState } from "./state/appReducer";
 import type { LocalAsset } from "./types/assets";
 import type { LyricsSettings } from "./types/lyrics";
 import { createLocalAsset } from "./utils/fileUrls";
@@ -37,6 +38,34 @@ const studioTabs: Array<{ id: StudioTabId; label: string }> = [
   { id: "export", label: "Export" },
 ];
 
+function hasProjectContent(state: AppState) {
+  return (
+    Boolean(state.backgroundImage) ||
+    Boolean(state.audioTrack) ||
+    Boolean(state.backgroundError) ||
+    Boolean(state.audioError) ||
+    state.videoFormatId !== initialAppState.videoFormatId ||
+    JSON.stringify(state.backgroundMotion) !==
+      JSON.stringify(initialAppState.backgroundMotion) ||
+    JSON.stringify(state.imageEffects) !==
+      JSON.stringify(initialAppState.imageEffects) ||
+    state.lyricLines.length > 0 ||
+    state.lyricsDraftText.length > 0 ||
+    state.lyricsDraftDirty ||
+    Boolean(state.activeLyricLineId) ||
+    Boolean(state.lyricsError) ||
+    Boolean(state.lyricsWarning) ||
+    JSON.stringify(state.lyricsSettings) !==
+      JSON.stringify(initialAppState.lyricsSettings) ||
+    state.visualizationEnabled !== initialAppState.visualizationEnabled ||
+    state.selectedVisualizationId !== initialAppState.selectedVisualizationId ||
+    JSON.stringify(state.visualizationSettings) !==
+      JSON.stringify(initialAppState.visualizationSettings) ||
+    JSON.stringify(state.visualizationPositions) !==
+      JSON.stringify(initialAppState.visualizationPositions)
+  );
+}
+
 function App() {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
@@ -46,6 +75,8 @@ function App() {
     useState<WorkbenchTabId>("files");
   const [activeStudioTab, setActiveStudioTab] =
     useState<StudioTabId>("preview");
+  const [isExportLocked, setIsExportLocked] = useState(false);
+  const hasCurrentProject = useMemo(() => hasProjectContent(state), [state]);
   const audioAnalyzer = useAudioAnalyzer(audioElement);
   const currentAudioTime = useAudioClock(audioElement);
   const selectedVisualization = getVisualizationById(
@@ -160,11 +191,30 @@ function App() {
     [applyLyricsText],
   );
 
+  const startNewVideo = useCallback(() => {
+    if (!hasCurrentProject) {
+      return false;
+    }
+
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+    }
+
+    dispatch({ type: "resetProject" });
+    setActiveWorkbenchTab("files");
+    setActiveStudioTab("preview");
+    setIsExportLocked(false);
+
+    return true;
+  }, [audioElement, hasCurrentProject]);
+
   return (
     <main className="app-shell">
       <section className="workspace" aria-label="Audio Visualizer Studio">
         <WorkbenchTabs
           activeTab={activeWorkbenchTab}
+          disabled={isExportLocked}
           onTabChange={setActiveWorkbenchTab}
         >
           {activeWorkbenchTab === "files" ? (
@@ -175,12 +225,16 @@ function App() {
               audioStatus={state.audioStatus}
               backgroundError={state.backgroundError}
               audioError={state.audioError}
+              canStartNewVideo={hasCurrentProject}
               onBackgroundSelected={loadBackgroundImage}
               onAudioSelected={loadAudioTrack}
               onClearBackground={() =>
                 dispatch({ type: "clearBackgroundImage" })
               }
               onClearAudio={() => dispatch({ type: "clearAudioTrack" })}
+              onNewVideo={() => {
+                startNewVideo();
+              }}
             />
           ) : null}
 
@@ -225,8 +279,12 @@ function App() {
           {activeWorkbenchTab === "visual" ? (
             <VisualizationPicker
               visualizations={visualizationRegistry}
+              enabled={state.visualizationEnabled}
               selectedId={state.selectedVisualizationId}
               settings={selectedSettings}
+              onEnabledChange={(enabled) =>
+                dispatch({ type: "setVisualizationEnabled", enabled })
+              }
               onSelect={(visualizationId) =>
                 dispatch({ type: "setSelectedVisualization", visualizationId })
               }
@@ -295,17 +353,18 @@ function App() {
         <div className="studio-surface">
           <div className="studio-tabs" role="tablist" aria-label="Studio tabs">
             {studioTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
                 id={`studio-tab-${tab.id}`}
                 aria-selected={activeStudioTab === tab.id}
                 aria-controls={`studio-tab-panel-${tab.id}`}
-                className={activeStudioTab === tab.id ? "is-active" : undefined}
-                data-testid={`studio-tab-${tab.id}`}
-                onClick={() => setActiveStudioTab(tab.id)}
-              >
+                  className={activeStudioTab === tab.id ? "is-active" : undefined}
+                  data-testid={`studio-tab-${tab.id}`}
+                  disabled={isExportLocked}
+                  onClick={() => setActiveStudioTab(tab.id)}
+                >
                 {tab.label}
               </button>
             ))}
@@ -325,6 +384,8 @@ function App() {
                 backgroundImage={state.backgroundImage}
                 status={state.backgroundStatus}
                 error={state.backgroundError}
+                isActive={activeStudioTab === "preview"}
+                visualizationEnabled={state.visualizationEnabled}
                 visualization={selectedVisualization}
                 settings={selectedSettings}
                 position={selectedPosition}
@@ -358,6 +419,13 @@ function App() {
                 audioElement={audioElement}
                 backgroundImage={state.backgroundImage}
                 audioTrack={state.audioTrack}
+                getAudioFrame={audioAnalyzer.getAudioFrame}
+                startAudioAnalysis={audioAnalyzer.start}
+                setAudioMonitorMuted={audioAnalyzer.setMonitorMuted}
+                getAudioRecordingStream={audioAnalyzer.getRecordingStream}
+                onRecordingStateChange={setIsExportLocked}
+                onNewVideo={startNewVideo}
+                visualizationEnabled={state.visualizationEnabled}
                 visualization={selectedVisualization}
                 settings={selectedSettings}
                 position={selectedPosition}
@@ -376,6 +444,7 @@ function App() {
             error={state.audioError}
             analyzerStatus={audioAnalyzer.status}
             analyzerError={audioAnalyzer.error}
+            disabled={isExportLocked}
             onAudioElementChange={setAudioElement}
             onMetadata={(duration) =>
               dispatch({ type: "setAudioMetadata", duration })

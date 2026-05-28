@@ -22,7 +22,7 @@ export function useAudioAnalyzer(audioElement: HTMLAudioElement | null) {
     setStatus("waiting");
     setError(null);
 
-    const start = async () => {
+    const startAnalyzer = async () => {
       try {
         await analyzer.start();
         setStatus(analyzer.getStatus());
@@ -39,12 +39,12 @@ export function useAudioAnalyzer(audioElement: HTMLAudioElement | null) {
       }
     };
 
-    audioElement.addEventListener("play", start);
+    audioElement.addEventListener("play", startAnalyzer);
     audioElement.addEventListener("pause", pause);
     audioElement.addEventListener("ended", pause);
 
     return () => {
-      audioElement.removeEventListener("play", start);
+      audioElement.removeEventListener("play", startAnalyzer);
       audioElement.removeEventListener("pause", pause);
       audioElement.removeEventListener("ended", pause);
       analyzer.destroy();
@@ -58,9 +58,30 @@ export function useAudioAnalyzer(audioElement: HTMLAudioElement | null) {
     return analyzerRef.current?.getFrame(time) ?? createSilentAudioFrame(time);
   }, []);
 
+  const start = useCallback(async () => {
+    if (!analyzerRef.current) {
+      return;
+    }
+
+    await analyzerRef.current.start();
+    setStatus(analyzerRef.current.getStatus());
+    setError(null);
+  }, []);
+
+  const setMonitorMuted = useCallback((muted: boolean) => {
+    analyzerRef.current?.setMonitorMuted(muted);
+  }, []);
+
+  const getRecordingStream = useCallback(() => {
+    return analyzerRef.current?.getRecordingStream() ?? null;
+  }, []);
+
   return {
     status,
     error,
     getAudioFrame,
+    start,
+    setMonitorMuted,
+    getRecordingStream,
   };
 }

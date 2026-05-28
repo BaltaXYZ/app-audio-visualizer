@@ -38,6 +38,49 @@ describe("appReducer", () => {
     expect(ready.backgroundImage?.height).toBe(720);
   });
 
+  it("resets the full project to fresh defaults", () => {
+    const withImage = appReducer(initialAppState, {
+      type: "setBackgroundImage",
+      asset: createAsset("cover.png", "image/png"),
+    });
+    const withAudio = appReducer(withImage, {
+      type: "setAudioTrack",
+      asset: createAsset("song.wav", "audio/wav"),
+    });
+    const withEffects = appReducer(withAudio, {
+      type: "applyImageEffectPreset",
+      presetId: "glitch-flash",
+    });
+    const withMotion = appReducer(withEffects, {
+      type: "updateBackgroundMotion",
+      settingId: "enabled",
+      value: true,
+    });
+    const withLyrics = appReducer(withMotion, {
+      type: "applyLyricsDraftResult",
+      lines: [
+        { id: "lyric-1", startTime: null, endTime: null, text: "First" },
+      ],
+      draftText: "First",
+    });
+    const withVisualChange = appReducer(withLyrics, {
+      type: "setVisualizationEnabled",
+      enabled: false,
+    });
+    const reset = appReducer(withVisualChange, { type: "resetProject" });
+
+    expect(reset).toEqual(initialAppState);
+    expect(reset.backgroundMotion).not.toBe(initialAppState.backgroundMotion);
+    expect(reset.imageEffects).not.toBe(initialAppState.imageEffects);
+    expect(reset.lyricsSettings).not.toBe(initialAppState.lyricsSettings);
+    expect(reset.visualizationSettings).not.toBe(
+      initialAppState.visualizationSettings,
+    );
+    expect(reset.visualizationPositions).not.toBe(
+      initialAppState.visualizationPositions,
+    );
+  });
+
   it("keeps visualization settings isolated per visualization", () => {
     const changed = appReducer(initialAppState, {
       type: "updateVisualizationSetting",
@@ -48,6 +91,28 @@ describe("appReducer", () => {
 
     expect(changed.visualizationSettings["pulse-circle"].baseRadius).toBe(140);
     expect(changed.visualizationSettings["frequency-bars"].barCount).toBe(48);
+  });
+
+  it("toggles the main visual independently from visual settings", () => {
+    const disabled = appReducer(initialAppState, {
+      type: "setVisualizationEnabled",
+      enabled: false,
+    });
+    const changed = appReducer(disabled, {
+      type: "updateVisualizationSetting",
+      visualizationId: "pulse-circle",
+      settingId: "baseRadius",
+      value: 140,
+    });
+    const enabled = appReducer(changed, {
+      type: "setVisualizationEnabled",
+      enabled: true,
+    });
+
+    expect(disabled.visualizationEnabled).toBe(false);
+    expect(changed.visualizationEnabled).toBe(false);
+    expect(changed.visualizationSettings["pulse-circle"].baseRadius).toBe(140);
+    expect(enabled.visualizationEnabled).toBe(true);
   });
 
   it("resets settings and position for the selected visualization", () => {

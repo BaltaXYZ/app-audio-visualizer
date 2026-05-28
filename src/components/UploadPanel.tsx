@@ -12,10 +12,12 @@ type UploadPanelProps = {
   audioStatus: LoadStatus;
   backgroundError: string | null;
   audioError: string | null;
+  canStartNewVideo: boolean;
   onBackgroundSelected: (file: File | null) => void;
   onAudioSelected: (file: File | null) => void;
   onClearBackground: () => void;
   onClearAudio: () => void;
+  onNewVideo: () => void;
 };
 
 export function UploadPanel({
@@ -25,16 +27,29 @@ export function UploadPanel({
   audioStatus,
   backgroundError,
   audioError,
+  canStartNewVideo,
   onBackgroundSelected,
   onAudioSelected,
   onClearBackground,
   onClearAudio,
+  onNewVideo,
 }: UploadPanelProps) {
   return (
     <section className="upload-panel" aria-label="Project files">
-      <div className="brand-block">
-        <p className="eyebrow">Audio Visualizer</p>
-        <h1>Build a music visual</h1>
+      <div className="brand-row">
+        <div className="brand-block">
+          <p className="eyebrow">Audio Visualizer</p>
+          <h1>Build a music visual</h1>
+        </div>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={!canStartNewVideo}
+          data-testid="new-video-files"
+          onClick={onNewVideo}
+        >
+          New video
+        </button>
       </div>
 
       <FileDrop

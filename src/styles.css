@@ -138,6 +138,13 @@ button {
   background: #ffffff;
 }
 
+.workbench-tabs button:disabled,
+.studio-tabs button:disabled,
+.lyrics-subtabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .workbench-panel {
   min-width: 0;
   min-height: 0;
@@ -164,6 +171,13 @@ button {
   height: 100%;
 }
 
+.interaction-lock-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .lyrics-card {
   grid-area: lyrics;
   min-height: calc(100vh - 48px);
@@ -179,6 +193,18 @@ button {
 
 .brand-block {
   padding-bottom: 4px;
+}
+
+.brand-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand-row .secondary-button {
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
 
 .eyebrow {
@@ -488,6 +514,11 @@ h2 {
   width: 100%;
 }
 
+.audio-card.is-locked audio {
+  pointer-events: none;
+  opacity: 0.58;
+}
+
 .studio-surface > .audio-card {
   margin-top: 20px;
 }
@@ -503,6 +534,50 @@ h2 {
   color: var(--ink-soft);
   font-size: 0.92rem;
   line-height: 1.35;
+}
+
+.export-recording-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(17, 24, 22, 0.72);
+}
+
+.export-recording-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(220px, 1fr) auto auto;
+  gap: 14px;
+  width: min(980px, 100%);
+  max-height: calc(100vh - 48px);
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+}
+
+.export-recording-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.export-recording-preview {
+  min-height: 220px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #151817;
+}
+
+.export-recording-preview canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 16 / 9;
 }
 
 .control-field {
@@ -778,6 +853,7 @@ h2 {
   }
 
   .preview-header,
+  .brand-row,
   .file-summary {
     flex-direction: column;
   }

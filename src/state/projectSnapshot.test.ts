@@ -25,6 +25,7 @@ describe("createProjectSnapshot", () => {
         duration: 12.4,
       },
       selectedVisualizationId: "radial-equalizer",
+      visualizationEnabled: false,
       videoFormatId: "9-16",
       backgroundMotion: {
         enabled: true,
@@ -59,6 +60,7 @@ describe("createProjectSnapshot", () => {
     const serialized = JSON.stringify(snapshot);
 
     expect(snapshot.schemaVersion).toBe(1);
+    expect(snapshot.visualizationEnabled).toBe(false);
     expect(snapshot.videoFormatId).toBe("9-16");
     expect(snapshot.assets.backgroundImage?.name).toBe("cover.png");
     expect(snapshot.assets.audioTrack?.duration).toBe(12.4);

@@ -31,6 +31,7 @@ export function createProjectSnapshot(
   return {
     schemaVersion: 1,
     createdAt,
+    visualizationEnabled: state.visualizationEnabled,
     selectedVisualizationId: state.selectedVisualizationId,
     videoFormatId: state.videoFormatId,
     assets: {

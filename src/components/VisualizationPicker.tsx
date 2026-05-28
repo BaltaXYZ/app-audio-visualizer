@@ -6,8 +6,10 @@ import type {
 
 type VisualizationPickerProps = {
   visualizations: readonly AnyVisualizationDefinition[];
+  enabled: boolean;
   selectedId: string;
   settings: VisualizationSettings;
+  onEnabledChange: (enabled: boolean) => void;
   onSelect: (id: string) => void;
   onSettingChange: (settingId: string, value: ControlValue) => void;
   onResetSettings: () => void;
@@ -16,8 +18,10 @@ type VisualizationPickerProps = {
 
 export function VisualizationPicker({
   visualizations,
+  enabled,
   selectedId,
   settings,
+  onEnabledChange,
   onSelect,
   onSettingChange,
   onResetSettings,
@@ -33,6 +37,16 @@ export function VisualizationPicker({
         <p className="eyebrow">Visual</p>
         <h2>Reactive style</h2>
       </div>
+
+      <label className="control-field checkbox">
+        <input
+          type="checkbox"
+          checked={enabled}
+          data-testid="visualization-enabled"
+          onChange={(event) => onEnabledChange(event.currentTarget.checked)}
+        />
+        <span className="control-label">Visual enabled</span>
+      </label>
 
       <label className="control-field">
         <span className="control-label">Style</span>

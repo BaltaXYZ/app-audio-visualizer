@@ -11,6 +11,17 @@ type ImageEffectStage = {
   height: number;
 };
 
+type BackingRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scaleX: number;
+  scaleY: number;
+};
+
+let imageEffectSourceCanvas: HTMLCanvasElement | null = null;
+
 export type ImageEffectRenderState = {
   enabled: boolean;
   presetId: ImageEffectPresetId;
@@ -226,9 +237,11 @@ export function drawImageEffects(
     return;
   }
 
-  const source = document.createElement("canvas");
-  source.width = Math.max(1, Math.round(stage.width));
-  source.height = Math.max(1, Math.round(stage.height));
+  const backingRect = getBackingRect(ctx, stage);
+  const source = getImageEffectSourceCanvas(
+    backingRect.width,
+    backingRect.height,
+  );
 
   const sourceCtx = source.getContext("2d");
   if (!sourceCtx) {
@@ -237,10 +250,10 @@ export function drawImageEffects(
 
   sourceCtx.drawImage(
     ctx.canvas,
-    stage.x,
-    stage.y,
-    stage.width,
-    stage.height,
+    backingRect.x,
+    backingRect.y,
+    backingRect.width,
+    backingRect.height,
     0,
     0,
     source.width,
@@ -259,7 +272,7 @@ export function drawImageEffects(
   drawToneOverlay(ctx, stage, effect, elapsedMs);
   drawDarkenOverlay(ctx, stage, effect);
   drawChannelShift(ctx, stage, source, effect);
-  drawGlitchSlices(ctx, stage, source, effect, elapsedMs);
+  drawGlitchSlices(ctx, stage, source, backingRect, effect, elapsedMs);
   drawGlow(ctx, stage, effect, elapsedMs);
   drawBeatFlash(ctx, stage, effect);
   drawVignette(ctx, stage, effect);
@@ -267,6 +280,40 @@ export function drawImageEffects(
 
   ctx.restore();
   resetCanvasEffectState(ctx);
+}
+
+function getImageEffectSourceCanvas(width: number, height: number) {
+  if (!imageEffectSourceCanvas) {
+    imageEffectSourceCanvas = document.createElement("canvas");
+  }
+
+  if (imageEffectSourceCanvas.width !== width) {
+    imageEffectSourceCanvas.width = width;
+  }
+
+  if (imageEffectSourceCanvas.height !== height) {
+    imageEffectSourceCanvas.height = height;
+  }
+
+  return imageEffectSourceCanvas;
+}
+
+function getBackingRect(
+  ctx: CanvasRenderingContext2D,
+  stage: ImageEffectStage,
+): BackingRect {
+  const transform = ctx.getTransform();
+  const scaleX = Math.max(1, Math.abs(transform.a) || 1);
+  const scaleY = Math.max(1, Math.abs(transform.d) || 1);
+
+  return {
+    x: Math.max(0, Math.round(stage.x * scaleX + transform.e)),
+    y: Math.max(0, Math.round(stage.y * scaleY + transform.f)),
+    width: Math.max(1, Math.round(stage.width * scaleX)),
+    height: Math.max(1, Math.round(stage.height * scaleY)),
+    scaleX,
+    scaleY,
+  };
 }
 
 function drawToneOverlay(
@@ -353,6 +400,7 @@ function drawGlitchSlices(
   ctx: CanvasRenderingContext2D,
   stage: ImageEffectStage,
   source: HTMLCanvasElement,
+  backingRect: BackingRect,
   effect: ImageEffectRenderState,
   elapsedMs: number,
 ) {
@@ -372,13 +420,15 @@ function drawGlitchSlices(
     const direction = index % 2 === 0 ? 1 : -1;
     const offset =
       direction * effect.sliceShift * (0.45 + ((phase + index) % 5) / 5);
+    const sourceY = y * backingRect.scaleY;
+    const sourceSliceHeight = sliceHeight * backingRect.scaleY;
 
     ctx.drawImage(
       source,
       0,
-      y,
+      sourceY,
       source.width,
-      sliceHeight,
+      sourceSliceHeight,
       stage.x + offset,
       stage.y + y,
       stage.width,

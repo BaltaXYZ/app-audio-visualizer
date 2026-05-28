@@ -55,12 +55,14 @@ export type AppState = {
   activeLyricLineId: string | null;
   lyricsError: string | null;
   lyricsWarning: string | null;
+  visualizationEnabled: boolean;
   selectedVisualizationId: string;
   visualizationSettings: Record<string, VisualizationSettings>;
   visualizationPositions: Record<string, NormalizedPoint>;
 };
 
 export type AppAction =
+  | { type: "resetProject" }
   | { type: "setBackgroundImage"; asset: LocalAsset }
   | { type: "setBackgroundMetadata"; width: number; height: number }
   | { type: "setBackgroundError"; message: string; preserveCurrent?: boolean }
@@ -69,6 +71,7 @@ export type AppAction =
   | { type: "setAudioMetadata"; duration: number }
   | { type: "setAudioError"; message: string }
   | { type: "clearAudioTrack" }
+  | { type: "setVisualizationEnabled"; enabled: boolean }
   | { type: "setSelectedVisualization"; visualizationId: string }
   | {
       type: "updateVisualizationSetting";
@@ -150,30 +153,37 @@ function getDefaultVisualizationSettings(visualizationId: string) {
   return visualization ? { ...visualization.defaultSettings } : {};
 }
 
-export const initialAppState: AppState = {
-  backgroundImage: null,
-  audioTrack: null,
-  backgroundStatus: "idle",
-  audioStatus: "idle",
-  backgroundError: null,
-  audioError: null,
-  videoFormatId: defaultVideoFormatId,
-  backgroundMotion: { ...defaultBackgroundMotion },
-  imageEffects: { ...defaultImageEffectSettings },
-  lyricLines: [],
-  lyricsDraftText: "",
-  lyricsDraftDirty: false,
-  lyricsSettings: { ...defaultLyricsSettings },
-  activeLyricLineId: null,
-  lyricsError: null,
-  lyricsWarning: null,
-  selectedVisualizationId: visualizationRegistry[0].id,
-  visualizationSettings: createInitialVisualizationSettings(),
-  visualizationPositions: createInitialVisualizationPositions(),
-};
+export function createInitialAppState(): AppState {
+  return {
+    backgroundImage: null,
+    audioTrack: null,
+    backgroundStatus: "idle",
+    audioStatus: "idle",
+    backgroundError: null,
+    audioError: null,
+    videoFormatId: defaultVideoFormatId,
+    backgroundMotion: { ...defaultBackgroundMotion },
+    imageEffects: { ...defaultImageEffectSettings },
+    lyricLines: [],
+    lyricsDraftText: "",
+    lyricsDraftDirty: false,
+    lyricsSettings: { ...defaultLyricsSettings },
+    activeLyricLineId: null,
+    lyricsError: null,
+    lyricsWarning: null,
+    visualizationEnabled: true,
+    selectedVisualizationId: visualizationRegistry[0].id,
+    visualizationSettings: createInitialVisualizationSettings(),
+    visualizationPositions: createInitialVisualizationPositions(),
+  };
+}
+
+export const initialAppState: AppState = createInitialAppState();
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
+    case "resetProject":
+      return createInitialAppState();
     case "setBackgroundImage":
       return {
         ...state,
@@ -251,6 +261,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         audioTrack: null,
         audioStatus: "idle",
         audioError: null,
+      };
+    case "setVisualizationEnabled":
+      return {
+        ...state,
+        visualizationEnabled: action.enabled,
       };
     case "setSelectedVisualization":
       return {

@@ -11,6 +11,8 @@ export class BrowserAudioAnalyzer {
   private audioContext: AudioContext | null = null;
   private source: MediaElementAudioSourceNode | null = null;
   private analyser: AnalyserNode | null = null;
+  private monitorGain: GainNode | null = null;
+  private recordingDestination: MediaStreamAudioDestinationNode | null = null;
   private frequencyData = new Uint8Array(fftSize / 2);
   private waveform = new Float32Array(fftSize);
   private fastEnergy = 0;
@@ -33,6 +35,24 @@ export class BrowserAudioAnalyzer {
 
     await this.audioContext.resume();
     this.status = "active";
+  }
+
+  setMonitorMuted(muted: boolean) {
+    this.ensureGraph();
+
+    if (!this.audioContext || !this.monitorGain) {
+      return;
+    }
+
+    this.monitorGain.gain.setValueAtTime(
+      muted ? 0 : 1,
+      this.audioContext.currentTime,
+    );
+  }
+
+  getRecordingStream() {
+    this.ensureGraph();
+    return this.recordingDestination?.stream ?? null;
   }
 
   getFrame(time: number): AudioFrame {
@@ -96,14 +116,24 @@ export class BrowserAudioAnalyzer {
     this.status = "idle";
     this.source?.disconnect();
     this.analyser?.disconnect();
+    this.monitorGain?.disconnect();
+    this.recordingDestination?.disconnect();
     void this.audioContext?.close();
     this.source = null;
     this.analyser = null;
+    this.monitorGain = null;
+    this.recordingDestination = null;
     this.audioContext = null;
   }
 
   private ensureGraph() {
-    if (this.audioContext && this.analyser && this.source) {
+    if (
+      this.audioContext &&
+      this.analyser &&
+      this.source &&
+      this.monitorGain &&
+      this.recordingDestination
+    ) {
       return;
     }
 
@@ -117,13 +147,19 @@ export class BrowserAudioAnalyzer {
 
     this.audioContext = new AudioContextConstructor();
     this.analyser = this.audioContext.createAnalyser();
+    this.monitorGain = this.audioContext.createGain();
+    this.recordingDestination =
+      this.audioContext.createMediaStreamDestination();
     this.analyser.fftSize = fftSize;
     this.analyser.smoothingTimeConstant = 0.74;
+    this.monitorGain.gain.value = 1;
     this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
     this.waveform = new Float32Array(this.analyser.fftSize);
     this.source = this.audioContext.createMediaElementSource(this.mediaElement);
     this.source.connect(this.analyser);
-    this.analyser.connect(this.audioContext.destination);
+    this.analyser.connect(this.monitorGain);
+    this.monitorGain.connect(this.audioContext.destination);
+    this.analyser.connect(this.recordingDestination);
   }
 
   private bandAverage(minFrequency: number, maxFrequency: number) {
